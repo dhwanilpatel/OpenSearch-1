@@ -439,6 +439,11 @@ public abstract class BlobStoreRepository extends AbstractLifecycleComponent imp
                 public TimeValue timeout() {
                     return updateTask.timeout();
                 }
+
+                @Override
+                public String getMasterThrottlingKey() {
+                    return updateTask.getMasterThrottlingKey();
+                }
             });
         }, onFailure));
     }

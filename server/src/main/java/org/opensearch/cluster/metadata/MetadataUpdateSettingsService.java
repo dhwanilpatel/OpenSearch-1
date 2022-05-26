@@ -158,6 +158,11 @@ public class MetadataUpdateSettingsService {
                 }
 
                 @Override
+                public String getMasterThrottlingKey() {
+                    return "update-settings";
+                }
+
+                @Override
                 public ClusterState execute(ClusterState currentState) {
 
                     RoutingTable.Builder routingTableBuilder = RoutingTable.builder(currentState.routingTable());

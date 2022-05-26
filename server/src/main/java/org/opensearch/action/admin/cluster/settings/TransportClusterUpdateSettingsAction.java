@@ -137,6 +137,11 @@ public class TransportClusterUpdateSettingsAction extends TransportMasterNodeAct
                 private volatile boolean changed = false;
 
                 @Override
+                public String getMasterThrottlingKey() {
+                    return "cluster-update-settings";
+                }
+
+                @Override
                 protected ClusterUpdateSettingsResponse newResponse(boolean acknowledged) {
                     return new ClusterUpdateSettingsResponse(acknowledged, updater.getTransientUpdates(), updater.getPersistentUpdate());
                 }
