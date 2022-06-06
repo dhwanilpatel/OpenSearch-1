@@ -109,6 +109,11 @@ public class MetadataMappingService {
             ClusterState newClusterState = executeRefresh(currentState, tasks);
             return ClusterTasksResult.<RefreshTask>builder().successes(tasks).build(newClusterState);
         }
+
+        @Override
+        public String getMasterThrottlingKey() {
+            return "refresh-mapping";
+        }
     }
 
     /**
@@ -244,6 +249,11 @@ public class MetadataMappingService {
             } finally {
                 IOUtils.close(indexMapperServices.values());
             }
+        }
+
+        @Override
+        public String getMasterThrottlingKey() {
+            return "put-mapping";
         }
 
         private ClusterState applyRequest(

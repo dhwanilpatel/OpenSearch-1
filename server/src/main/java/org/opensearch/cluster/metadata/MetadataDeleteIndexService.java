@@ -99,6 +99,11 @@ public class MetadataDeleteIndexService {
                 }
 
                 @Override
+                public String getMasterThrottlingKey() {
+                    return "delete-index";
+                }
+
+                @Override
                 public ClusterState execute(final ClusterState currentState) {
                     return deleteIndices(currentState, Sets.newHashSet(request.indices()));
                 }
