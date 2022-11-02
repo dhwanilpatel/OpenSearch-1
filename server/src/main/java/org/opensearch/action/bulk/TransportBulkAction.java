@@ -454,7 +454,11 @@ public class TransportBulkAction extends HandledTransportAction<BulkRequest, Bul
         createIndexRequest.index(index);
         createIndexRequest.cause("auto(bulk api)");
         createIndexRequest.clusterManagerNodeTimeout(timeout);
-        client.execute(AutoCreateAction.INSTANCE, createIndexRequest, listener);
+        if (minNodeVersion.onOrAfter(LegacyESVersion.V_7_8_0)) {
+            client.execute(AutoCreateAction.INSTANCE, createIndexRequest, listener);
+        } else {
+            client.admin().indices().create(createIndexRequest, listener);
+        }
     }
 
     private boolean setResponseFailureIfIndexMatches(

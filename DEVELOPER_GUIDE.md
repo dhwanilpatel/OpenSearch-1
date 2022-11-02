@@ -45,13 +45,9 @@
     - [Indexing & Search](#indexing--search)
     - [Aggregations](#aggregations)
     - [Distributed Framework](#distributed-framework)
-  - [Misc](#misc)
-    - [Git Secrets](#git-secrets)
-      - [Installation](#installation)
-      - [Configuration](#configuration)
-    - [Submitting Changes](#submitting-changes)
-    - [Backports](#backports)
-    - [LineLint](#linelint)
+  - [Submitting Changes](#submitting-changes)
+  - [Backports](#backports)
+  - [LineLint](#linelint)
     - [Lucene Snapshots](#lucene-snapshots)
     - [Flaky Tests](#flaky-tests)
 
@@ -522,8 +518,7 @@ See [CONTRIBUTING](CONTRIBUTING.md).
 
 The Github workflow in [`backport.yml`](.github/workflows/backport.yml) creates backport PRs automatically when the original PR with an appropriate label `backport <backport-branch-name>` is merged to main with the backport workflow run successfully on the PR. For example, if a PR on main needs to be backported to `1.x` branch, add a label `backport 1.x` to the PR and make sure the backport workflow runs on the PR along with other checks. Once this PR is merged to main, the workflow will create a backport PR to the `1.x` branch.
 
-### LineLint
-
+## LineLint
 A linter in [`code-hygiene.yml`](.github/workflows/code-hygiene.yml) that validates simple newline and whitespace rules in all sorts of files. It can:
 - Recursively check a directory tree for files that do not end in a newline
 - Automatically fix these files by adding a newline or trimming extra newlines.
@@ -539,7 +534,6 @@ Pass a list of files or directories to limit your search.
     linelint README.md LICENSE
 
 ### Lucene Snapshots
-
 The Github workflow in [lucene-snapshots.yml](.github/workflows/lucene-snapshots.yml) is a Github worfklow executable by maintainers to build a top-down snapshot build of lucene.
 These snapshots are available to test compatibility with upcoming changes to Lucene by updating the version at [version.properties](buildsrc/version.properties) with the `version-snapshot-sha` version. Example: `lucene = 10.0.0-snapshot-2e941fc`.
 

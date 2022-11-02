@@ -44,18 +44,18 @@ import org.opensearch.test.OpenSearchIntegTestCase;
 
 import java.util.List;
 
+import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.allOf;
-import static org.hamcrest.Matchers.closeTo;
-import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
-import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.sameInstance;
-import static org.opensearch.geo.tests.common.AggregationBuilders.geoBounds;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.closeTo;
 import static org.opensearch.index.query.QueryBuilders.matchAllQuery;
 import static org.opensearch.search.aggregations.AggregationBuilders.global;
 import static org.opensearch.search.aggregations.AggregationBuilders.terms;
 import static org.opensearch.test.hamcrest.OpenSearchAssertions.assertSearchResponse;
+import static org.opensearch.geo.tests.common.AggregationBuilders.geoBounds;
 
 @OpenSearchIntegTestCase.SuiteScopeTestCase
 public class GeoBoundsITTestCase extends AbstractGeoAggregatorModulePluginTestCase {

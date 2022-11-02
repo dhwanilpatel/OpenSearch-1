@@ -330,7 +330,41 @@ public class DiscoveryNode implements Writeable, ToXContentFragment {
                 if (in.getVersion().onOrAfter(Version.V_2_1_0)) {
                     roles.add(new DiscoveryNodeRole.DynamicRole(roleName, roleNameAbbreviation, canContainData));
                 } else {
-                    roles.add(new DiscoveryNodeRole.UnknownRole(roleName, roleNameAbbreviation, canContainData));
+                    canContainData = roleName.equals(DiscoveryNodeRole.DATA_ROLE.roleName());
+                }
+                final DiscoveryNodeRole role = roleMap.get(roleName);
+                if (role == null) {
+                    if (in.getVersion().onOrAfter(Version.V_2_1_0)) {
+                        roles.add(new DiscoveryNodeRole.DynamicRole(roleName, roleNameAbbreviation, canContainData));
+                    } else {
+                        roles.add(new DiscoveryNodeRole.UnknownRole(roleName, roleNameAbbreviation, canContainData));
+                    }
+                } else {
+                    assert roleName.equals(role.roleName()) : "role name [" + roleName + "] does not match role [" + role.roleName() + "]";
+                    assert roleNameAbbreviation.equals(role.roleNameAbbreviation()) : "role name abbreviation ["
+                        + roleName
+                        + "] does not match role ["
+                        + role.roleNameAbbreviation()
+                        + "]";
+                    roles.add(role);
+                }
+            }
+        } else {
+            // an old node will only send us legacy roles since pluggable roles is a new concept
+            for (int i = 0; i < rolesSize; i++) {
+                final LegacyRole legacyRole = in.readEnum(LegacyRole.class);
+                switch (legacyRole) {
+                    case MASTER:
+                        roles.add(DiscoveryNodeRole.CLUSTER_MANAGER_ROLE);
+                        break;
+                    case DATA:
+                        roles.add(DiscoveryNodeRole.DATA_ROLE);
+                        break;
+                    case INGEST:
+                        roles.add(DiscoveryNodeRole.INGEST_ROLE);
+                        break;
+                    default:
+                        throw new AssertionError(legacyRole.roleName());
                 }
             } else {
                 assert roleName.equals(role.roleName()) : "role name [" + roleName + "] does not match role [" + role.roleName() + "]";

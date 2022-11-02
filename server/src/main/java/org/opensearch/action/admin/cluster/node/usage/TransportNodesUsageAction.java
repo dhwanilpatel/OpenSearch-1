@@ -117,7 +117,7 @@ public class TransportNodesUsageAction extends TransportNodesAction<
      *
      * @opensearch.internal
      */
-    public static class NodeUsageRequest extends TransportRequest {
+    public static class NodeUsageRequest extends BaseNodeRequest {
 
         NodesUsageRequest request;
 

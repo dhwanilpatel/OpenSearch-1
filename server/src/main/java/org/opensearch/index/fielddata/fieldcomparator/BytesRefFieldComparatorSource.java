@@ -107,7 +107,6 @@ public class BytesRefFieldComparatorSource extends IndexFieldData.XFieldComparat
                 reversed,
                 enableSkipping
             ) {
-
                 @Override
                 protected SortedDocValues getSortedDocValues(LeafReaderContext context, String field) throws IOException {
                     final SortedSetDocValues values = ((IndexOrdinalsFieldData) indexFieldData).load(context).getOrdinalsValues();

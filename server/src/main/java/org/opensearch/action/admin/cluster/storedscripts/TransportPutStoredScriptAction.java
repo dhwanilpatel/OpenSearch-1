@@ -100,7 +100,7 @@ public class TransportPutStoredScriptAction extends TransportClusterManagerNodeA
         ClusterState state,
         ActionListener<AcknowledgedResponse> listener
     ) throws Exception {
-        scriptService.putStoredScript(clusterService, request, putScriptTaskKey, listener);
+        scriptService.putStoredScript(clusterService, request, listener);
     }
 
     @Override

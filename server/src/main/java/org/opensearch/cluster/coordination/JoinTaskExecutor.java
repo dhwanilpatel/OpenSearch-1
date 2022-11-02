@@ -340,6 +340,15 @@ public class JoinTaskExecutor implements ClusterStateTaskExecutor<JoinTaskExecut
                             channelVersions.get(tmpNode.getId())
                         );
                     }
+                } else {
+                    // in case existing OpenSearch node is present in the cluster and but there is no connection to that node yet,
+                    // either that node will send new JoinRequest to the cluster-manager/master with version >=1.0, then no issue or
+                    // there is an edge case if doesn't send JoinRequest and connection is established,
+                    // then it can continue to report version as 7.10.2 instead of actual OpenSearch version. So,
+                    // removing the node from cluster state to prevent stale version reporting and let it reconnect.
+                    if (node.getVersion().equals(LegacyESVersion.V_7_10_2)) {
+                        nodesBuilder.remove(node.getId());
+                    }
                 }
             }
         }
@@ -353,7 +362,6 @@ public class JoinTaskExecutor implements ClusterStateTaskExecutor<JoinTaskExecut
 
     /**
      * a task indicates that the current node should become master
-     *
      * @deprecated As of 2.0, because supporting inclusive language, replaced by {@link #newBecomeClusterManagerTask()}
      */
     @Deprecated

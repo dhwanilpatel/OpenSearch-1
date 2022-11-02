@@ -119,7 +119,7 @@ final class IndicesRequestConverters {
 
         RequestConverters.Params parameters = new RequestConverters.Params();
         parameters.withTimeout(deleteIndexRequest.timeout());
-        parameters.withClusterManagerTimeout(deleteIndexRequest.clusterManagerNodeTimeout());
+        parameters.withMasterTimeout(deleteIndexRequest.clusterManagerNodeTimeout());
         parameters.withIndicesOptions(deleteIndexRequest.indicesOptions());
         request.addParameters(parameters.asMap());
         return request;
@@ -131,7 +131,7 @@ final class IndicesRequestConverters {
 
         RequestConverters.Params parameters = new RequestConverters.Params();
         parameters.withTimeout(openIndexRequest.timeout());
-        parameters.withClusterManagerTimeout(openIndexRequest.clusterManagerNodeTimeout());
+        parameters.withMasterTimeout(openIndexRequest.clusterManagerNodeTimeout());
         parameters.withWaitForActiveShards(openIndexRequest.waitForActiveShards());
         parameters.withIndicesOptions(openIndexRequest.indicesOptions());
         request.addParameters(parameters.asMap());
@@ -144,7 +144,7 @@ final class IndicesRequestConverters {
 
         RequestConverters.Params parameters = new RequestConverters.Params();
         parameters.withTimeout(closeIndexRequest.timeout());
-        parameters.withClusterManagerTimeout(closeIndexRequest.clusterManagerNodeTimeout());
+        parameters.withMasterTimeout(closeIndexRequest.clusterManagerNodeTimeout());
         parameters.withIndicesOptions(closeIndexRequest.indicesOptions());
         request.addParameters(parameters.asMap());
         return request;
@@ -156,7 +156,7 @@ final class IndicesRequestConverters {
 
         RequestConverters.Params parameters = new RequestConverters.Params();
         parameters.withTimeout(createIndexRequest.timeout());
-        parameters.withClusterManagerTimeout(createIndexRequest.clusterManagerNodeTimeout());
+        parameters.withMasterTimeout(createIndexRequest.clusterManagerNodeTimeout());
         parameters.withWaitForActiveShards(createIndexRequest.waitForActiveShards());
         request.addParameters(parameters.asMap());
         request.setEntity(RequestConverters.createEntity(createIndexRequest, RequestConverters.REQUEST_BODY_CONTENT_TYPE));
@@ -168,7 +168,7 @@ final class IndicesRequestConverters {
 
         RequestConverters.Params parameters = new RequestConverters.Params();
         parameters.withTimeout(indicesAliasesRequest.timeout());
-        parameters.withClusterManagerTimeout(indicesAliasesRequest.clusterManagerNodeTimeout());
+        parameters.withMasterTimeout(indicesAliasesRequest.clusterManagerNodeTimeout());
         request.addParameters(parameters.asMap());
         request.setEntity(RequestConverters.createEntity(indicesAliasesRequest, RequestConverters.REQUEST_BODY_CONTENT_TYPE));
         return request;
@@ -179,7 +179,7 @@ final class IndicesRequestConverters {
 
         RequestConverters.Params parameters = new RequestConverters.Params();
         parameters.withTimeout(putMappingRequest.timeout());
-        parameters.withClusterManagerTimeout(putMappingRequest.clusterManagerNodeTimeout());
+        parameters.withMasterTimeout(putMappingRequest.clusterManagerNodeTimeout());
         parameters.withIndicesOptions(putMappingRequest.indicesOptions());
         request.addParameters(parameters.asMap());
         request.setEntity(RequestConverters.createEntity(putMappingRequest, RequestConverters.REQUEST_BODY_CONTENT_TYPE));
@@ -192,7 +192,7 @@ final class IndicesRequestConverters {
         Request request = new Request(HttpGet.METHOD_NAME, RequestConverters.endpoint(indices, "_mapping"));
 
         RequestConverters.Params parameters = new RequestConverters.Params();
-        parameters.withClusterManagerTimeout(getMappingsRequest.clusterManagerNodeTimeout());
+        parameters.withMasterTimeout(getMappingsRequest.clusterManagerNodeTimeout());
         parameters.withIndicesOptions(getMappingsRequest.indicesOptions());
         parameters.withLocal(getMappingsRequest.local());
         request.addParameters(parameters.asMap());
@@ -332,7 +332,7 @@ final class IndicesRequestConverters {
 
         RequestConverters.Params params = new RequestConverters.Params();
         params.withTimeout(resizeRequest.timeout());
-        params.withClusterManagerTimeout(resizeRequest.clusterManagerNodeTimeout());
+        params.withMasterTimeout(resizeRequest.clusterManagerNodeTimeout());
         params.withWaitForActiveShards(resizeRequest.getWaitForActiveShards());
         request.addParameters(params.asMap());
         request.setEntity(RequestConverters.createEntity(resizeRequest, RequestConverters.REQUEST_BODY_CONTENT_TYPE));
@@ -349,7 +349,7 @@ final class IndicesRequestConverters {
 
         RequestConverters.Params params = new RequestConverters.Params();
         params.withTimeout(resizeRequest.timeout());
-        params.withClusterManagerTimeout(resizeRequest.clusterManagerNodeTimeout());
+        params.withMasterTimeout(resizeRequest.clusterManagerNodeTimeout());
         params.withWaitForActiveShards(resizeRequest.getTargetIndexRequest().waitForActiveShards());
         request.addParameters(params.asMap());
         request.setEntity(RequestConverters.createEntity(resizeRequest, RequestConverters.REQUEST_BODY_CONTENT_TYPE));
@@ -365,7 +365,7 @@ final class IndicesRequestConverters {
 
         RequestConverters.Params params = new RequestConverters.Params();
         params.withTimeout(rolloverRequest.timeout());
-        params.withClusterManagerTimeout(rolloverRequest.clusterManagerNodeTimeout());
+        params.withMasterTimeout(rolloverRequest.clusterManagerNodeTimeout());
         params.withWaitForActiveShards(rolloverRequest.getCreateIndexRequest().waitForActiveShards());
         if (rolloverRequest.isDryRun()) {
             params.putParam("dry_run", Boolean.TRUE.toString());
@@ -386,7 +386,7 @@ final class IndicesRequestConverters {
         params.withIndicesOptions(getSettingsRequest.indicesOptions());
         params.withLocal(getSettingsRequest.local());
         params.withIncludeDefaults(getSettingsRequest.includeDefaults());
-        params.withClusterManagerTimeout(getSettingsRequest.clusterManagerNodeTimeout());
+        params.withMasterTimeout(getSettingsRequest.clusterManagerNodeTimeout());
         request.addParameters(params.asMap());
         return request;
     }
@@ -402,7 +402,7 @@ final class IndicesRequestConverters {
         params.withLocal(getIndexRequest.local());
         params.withIncludeDefaults(getIndexRequest.includeDefaults());
         params.withHuman(getIndexRequest.humanReadable());
-        params.withClusterManagerTimeout(getIndexRequest.clusterManagerNodeTimeout());
+        params.withMasterTimeout(getIndexRequest.clusterManagerNodeTimeout());
         request.addParameters(params.asMap());
         return request;
     }
@@ -429,7 +429,7 @@ final class IndicesRequestConverters {
 
         RequestConverters.Params parameters = new RequestConverters.Params();
         parameters.withTimeout(updateSettingsRequest.timeout());
-        parameters.withClusterManagerTimeout(updateSettingsRequest.clusterManagerNodeTimeout());
+        parameters.withMasterTimeout(updateSettingsRequest.clusterManagerNodeTimeout());
         parameters.withIndicesOptions(updateSettingsRequest.indicesOptions());
         parameters.withPreserveExisting(updateSettingsRequest.isPreserveExisting());
         request.addParameters(parameters.asMap());
@@ -443,7 +443,7 @@ final class IndicesRequestConverters {
             .build();
         Request request = new Request(HttpPut.METHOD_NAME, endpoint);
         RequestConverters.Params params = new RequestConverters.Params();
-        params.withClusterManagerTimeout(putIndexTemplateRequest.clusterManagerNodeTimeout());
+        params.withMasterTimeout(putIndexTemplateRequest.clusterManagerNodeTimeout());
         if (putIndexTemplateRequest.create()) {
             params.putParam("create", Boolean.TRUE.toString());
         }
@@ -461,7 +461,7 @@ final class IndicesRequestConverters {
             .build();
         Request request = new Request(HttpPut.METHOD_NAME, endpoint);
         RequestConverters.Params params = new RequestConverters.Params();
-        params.withClusterManagerTimeout(putIndexTemplateRequest.clusterManagerNodeTimeout());
+        params.withMasterTimeout(putIndexTemplateRequest.clusterManagerNodeTimeout());
         if (putIndexTemplateRequest.create()) {
             params.putParam("create", Boolean.TRUE.toString());
         }
@@ -479,7 +479,7 @@ final class IndicesRequestConverters {
             .build();
         Request request = new Request(HttpPost.METHOD_NAME, endpoint);
         RequestConverters.Params params = new RequestConverters.Params();
-        params.withClusterManagerTimeout(simulateIndexTemplateRequest.clusterManagerNodeTimeout());
+        params.withMasterTimeout(simulateIndexTemplateRequest.clusterManagerNodeTimeout());
         PutComposableIndexTemplateRequest putComposableIndexTemplateRequest = simulateIndexTemplateRequest.indexTemplateV2Request();
         if (putComposableIndexTemplateRequest != null) {
             if (putComposableIndexTemplateRequest.create()) {
@@ -587,7 +587,7 @@ final class IndicesRequestConverters {
         String endpoint = new RequestConverters.EndpointBuilder().addPathPartAsIs("_template").addPathPart(name).build();
         Request request = new Request(HttpDelete.METHOD_NAME, endpoint);
         RequestConverters.Params params = new RequestConverters.Params();
-        params.withClusterManagerTimeout(deleteIndexTemplateRequest.clusterManagerNodeTimeout());
+        params.withMasterTimeout(deleteIndexTemplateRequest.clusterManagerNodeTimeout());
         request.addParameters(params.asMap());
         return request;
     }
@@ -597,7 +597,7 @@ final class IndicesRequestConverters {
         String endpoint = new RequestConverters.EndpointBuilder().addPathPartAsIs("_index_template").addPathPart(name).build();
         Request request = new Request(HttpDelete.METHOD_NAME, endpoint);
         RequestConverters.Params params = new RequestConverters.Params();
-        params.withClusterManagerTimeout(deleteIndexTemplateRequest.clusterManagerNodeTimeout());
+        params.withMasterTimeout(deleteIndexTemplateRequest.clusterManagerNodeTimeout());
         request.addParameters(params.asMap());
         return request;
     }
@@ -610,7 +610,7 @@ final class IndicesRequestConverters {
         Request request = new Request(HttpDelete.METHOD_NAME, endpoint);
         RequestConverters.Params parameters = new RequestConverters.Params();
         parameters.withTimeout(deleteAliasRequest.timeout());
-        parameters.withClusterManagerTimeout(deleteAliasRequest.clusterManagerNodeTimeout());
+        parameters.withMasterTimeout(deleteAliasRequest.clusterManagerNodeTimeout());
         request.addParameters(parameters.asMap());
         return request;
     }

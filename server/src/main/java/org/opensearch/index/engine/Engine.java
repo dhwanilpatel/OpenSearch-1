@@ -80,10 +80,10 @@ import org.opensearch.index.seqno.SequenceNumbers;
 import org.opensearch.index.shard.DocsStats;
 import org.opensearch.index.shard.ShardId;
 import org.opensearch.index.store.Store;
-import org.opensearch.index.translog.Translog;
-import org.opensearch.index.translog.TranslogManager;
-import org.opensearch.index.translog.TranslogDeletionPolicy;
 import org.opensearch.index.translog.DefaultTranslogDeletionPolicy;
+import org.opensearch.index.translog.Translog;
+import org.opensearch.index.translog.TranslogStats;
+import org.opensearch.index.translog.TranslogDeletionPolicy;
 import org.opensearch.search.suggest.completion.CompletionStats;
 
 import java.io.Closeable;
@@ -118,7 +118,7 @@ import static org.opensearch.index.seqno.SequenceNumbers.UNASSIGNED_SEQ_NO;
  *
  * @opensearch.internal
  */
-public abstract class Engine implements LifecycleAware, Closeable {
+public abstract class Engine implements Closeable {
 
     public static final String SYNC_COMMIT_ID = "sync_id";  // TODO: remove sync_id in 3.0
     public static final String HISTORY_UUID_KEY = "history_uuid";
@@ -176,8 +176,10 @@ public abstract class Engine implements LifecycleAware, Closeable {
      * Return the latest active SegmentInfos from the engine.
      * @return {@link SegmentInfos}
      */
-    @Nullable
-    protected abstract SegmentInfos getLatestSegmentInfos();
+    protected SegmentInfos getLatestSegmentInfos() {
+        // Default Implementation.
+        return null;
+    };
 
     /**
      * In contrast to {@link #getLatestSegmentInfos()}, which returns a {@link SegmentInfos}
@@ -348,6 +350,13 @@ public abstract class Engine implements LifecycleAware, Closeable {
      * @see #getIndexThrottleTimeInMillis()
      */
     public abstract boolean isThrottled();
+
+    /**
+     * A Lock implementation that always allows the lock to be acquired
+     *
+     * @opensearch.internal
+     */
+    public abstract void trimOperationsFromTranslog(long belowTerm, long aboveSeqNo) throws EngineException;
 
     /**
      * A Lock implementation that always allows the lock to be acquired
@@ -796,6 +805,19 @@ public abstract class Engine implements LifecycleAware, Closeable {
         long toSeqNo,
         boolean requiredFullRange,
         boolean accurateCount
+    ) throws IOException;
+
+    /**
+     * Reads history operations from the translog file instead of the lucene index
+     *
+     * @deprecated reading history operations from the translog file is deprecated and will be removed in the next release
+     */
+    @Deprecated
+    public abstract Translog.Snapshot newChangesSnapshotFromTranslogFile(
+        String source,
+        long fromSeqNo,
+        long toSeqNo,
+        boolean requiredFullRange
     ) throws IOException;
 
     /**
@@ -1984,6 +2006,16 @@ public abstract class Engine implements LifecycleAware, Closeable {
      * The engine will disable optimization for all append-only whose timestamp at most {@code newTimestamp}.
      */
     public abstract void updateMaxUnsafeAutoIdTimestamp(long newTimestamp);
+
+    /**
+     * The runner for translog recovery
+     *
+     * @opensearch.internal
+     */
+    @FunctionalInterface
+    public interface TranslogRecoveryRunner {
+        int run(Engine engine, Translog.Snapshot snapshot) throws IOException;
+    }
 
     /**
      * Returns the maximum sequence number of either update or delete operations have been processed in this engine

@@ -68,7 +68,7 @@ import static java.util.Collections.emptyMap;
 import static java.util.Collections.singletonMap;
 import static java.util.Collections.unmodifiableMap;
 import static org.opensearch.Version.V_2_1_0;
-import static org.opensearch.Version.V_3_0_0;
+import static org.opensearch.Version.V_2_3_0;
 import static org.opensearch.cluster.metadata.IndexMetadata.INDEX_UUID_NA_VALUE;
 import static org.opensearch.common.xcontent.XContentParserUtils.ensureExpectedToken;
 import static org.opensearch.common.xcontent.XContentParserUtils.ensureFieldName;
@@ -1579,7 +1579,7 @@ public class OpenSearchException extends RuntimeException implements ToXContentF
             org.opensearch.transport.NoSeedNodeLeftException.class,
             org.opensearch.transport.NoSeedNodeLeftException::new,
             160,
-            UNKNOWN_VERSION_ADDED
+            LegacyESVersion.V_7_10_0
         ),
         REPLICATION_FAILED_EXCEPTION(
             org.opensearch.indices.replication.common.ReplicationFailedException.class,
@@ -1591,25 +1591,7 @@ public class OpenSearchException extends RuntimeException implements ToXContentF
             org.opensearch.index.shard.PrimaryShardClosedException.class,
             org.opensearch.index.shard.PrimaryShardClosedException::new,
             162,
-            V_3_0_0
-        ),
-        DECOMMISSIONING_FAILED_EXCEPTION(
-            org.opensearch.cluster.decommission.DecommissioningFailedException.class,
-            org.opensearch.cluster.decommission.DecommissioningFailedException::new,
-            163,
-            V_3_0_0
-        ),
-        NODE_DECOMMISSIONED_EXCEPTION(
-            org.opensearch.cluster.decommission.NodeDecommissionedException.class,
-            org.opensearch.cluster.decommission.NodeDecommissionedException::new,
-            164,
-            V_3_0_0
-        ),
-        CLUSTER_MANAGER_TASK_THROTTLED_EXCEPTION(
-            ClusterManagerThrottlingException.class,
-            ClusterManagerThrottlingException::new,
-            165,
-            Version.V_2_4_0
+            V_2_3_0
         );
 
         final Class<? extends OpenSearchException> exceptionClass;

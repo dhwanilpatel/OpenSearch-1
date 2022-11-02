@@ -44,6 +44,10 @@ public class InternalTranslogManager implements TranslogManager, Closeable {
     private final Supplier<LocalCheckpointTracker> localCheckpointTrackerSupplier;
     private static final Logger logger = LogManager.getLogger(InternalTranslogManager.class);
 
+    public AtomicBoolean getPendingTranslogRecovery() {
+        return pendingTranslogRecovery;
+    }
+
     public InternalTranslogManager(
         TranslogConfig translogConfig,
         LongSupplier primaryTermSupplier,
@@ -54,8 +58,7 @@ public class InternalTranslogManager implements TranslogManager, Closeable {
         Supplier<LocalCheckpointTracker> localCheckpointTrackerSupplier,
         String translogUUID,
         TranslogEventListener translogEventListener,
-        LifecycleAware engineLifeCycleAware,
-        TranslogFactory translogFactory
+        LifecycleAware engineLifeCycleAware
     ) throws IOException {
         this.shardId = shardId;
         this.readLock = readLock;
@@ -68,7 +71,7 @@ public class InternalTranslogManager implements TranslogManager, Closeable {
             if (tracker != null) {
                 tracker.markSeqNoAsPersisted(seqNo);
             }
-        }, translogUUID, translogFactory);
+        }, translogUUID);
         assert translog.getGeneration() != null;
         this.translog = translog;
         assert pendingTranslogRecovery.get() == false : "translog recovery can't be pending before we set it";
@@ -96,11 +99,6 @@ public class InternalTranslogManager implements TranslogManager, Closeable {
             }
             throw new TranslogException(shardId, "failed to roll translog", e);
         }
-    }
-
-    @Override
-    public Translog.Snapshot newChangesSnapshot(long fromSeqNo, long toSeqNo, boolean requiredFullRange) throws IOException {
-        return translog.newSnapshot(fromSeqNo, toSeqNo, requiredFullRange);
     }
 
     /**
@@ -291,9 +289,9 @@ public class InternalTranslogManager implements TranslogManager, Closeable {
 
     /**
      * Reads operations from the translog
-     * @param location location of translog
+     * @param location
      * @return the translog operation
-     * @throws IOException throws an IO exception
+     * @throws IOException
      */
     @Override
     public Translog.Operation readOperation(Translog.Location location) throws IOException {
@@ -302,9 +300,9 @@ public class InternalTranslogManager implements TranslogManager, Closeable {
 
     /**
      * Adds an operation to the translog
-     * @param operation operation to add to translog
+     * @param operation
      * @return the location in the translog
-     * @throws IOException throws an IO exception
+     * @throws IOException
      */
     @Override
     public Translog.Location add(Translog.Operation operation) throws IOException {
@@ -339,11 +337,10 @@ public class InternalTranslogManager implements TranslogManager, Closeable {
         TranslogDeletionPolicy translogDeletionPolicy,
         LongSupplier globalCheckpointSupplier,
         LongConsumer persistedSequenceNumberConsumer,
-        String translogUUID,
-        TranslogFactory translogFactory
+        String translogUUID
     ) throws IOException {
 
-        return translogFactory.newTranslog(
+        return new Translog(
             translogConfig,
             translogUUID,
             translogDeletionPolicy,
@@ -403,8 +400,8 @@ public class InternalTranslogManager implements TranslogManager, Closeable {
 
     /**
      *
-     * @param localCheckpointOfLastCommit local checkpoint reference of last commit to translog
-     * @param flushThreshold threshold to flush to translog
+     * @param localCheckpointOfLastCommit
+     * @param flushThreshold
      * @return if the translog should be flushed
      */
     public boolean shouldPeriodicallyFlush(long localCheckpointOfLastCommit, long flushThreshold) {

@@ -188,7 +188,7 @@ public class TransportNodesReloadSecureSettingsAction extends TransportNodesActi
      *
      * @opensearch.internal
      */
-    public static class NodeRequest extends TransportRequest {
+    public static class NodeRequest extends BaseNodeRequest {
 
         NodesReloadSecureSettingsRequest request;
 

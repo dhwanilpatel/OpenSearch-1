@@ -548,8 +548,6 @@ public class IndexService extends AbstractIndexComponent implements IndicesClust
                 () -> globalCheckpointSyncer.accept(shardId),
                 retentionLeaseSyncer,
                 circuitBreakerService,
-                // TODO Replace with remote translog factory in the follow up PR
-                this.indexSettings.isRemoteTranslogStoreEnabled() ? null : new InternalTranslogFactory(),
                 this.indexSettings.isSegRepEnabled() ? checkpointPublisher : null,
                 remoteStore
             );

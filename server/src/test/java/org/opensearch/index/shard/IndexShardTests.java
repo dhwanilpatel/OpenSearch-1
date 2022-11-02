@@ -4320,13 +4320,16 @@ public class IndexShardTests extends IndexShardTestCase {
         CountDownLatch snapshotDoneLatch = new CountDownLatch(1);
         IndexShard shard = newStartedShard(false, Settings.EMPTY, config -> new InternalEngine(config, new TranslogEventListener() {
             @Override
-            public void onAfterTranslogRecovery() {
+            public InternalEngine recoverFromTranslog(TranslogRecoveryRunner translogRecoveryRunner, long recoverUpToSeqNo)
+                throws IOException {
+                InternalEngine engine = super.recoverFromTranslog(translogRecoveryRunner, recoverUpToSeqNo);
                 readyToSnapshotLatch.countDown();
                 try {
                     snapshotDoneLatch.await();
                 } catch (InterruptedException e) {
                     throw new AssertionError(e);
                 }
+                return engine;
             }
         }));
 

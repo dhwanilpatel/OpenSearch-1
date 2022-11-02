@@ -106,7 +106,7 @@ import org.opensearch.index.shard.ShardId;
 import org.opensearch.index.translog.Translog;
 import org.opensearch.index.translog.TranslogCorruptedException;
 import org.opensearch.index.translog.TranslogDeletionPolicy;
-import org.opensearch.index.translog.TranslogManager;
+import org.opensearch.index.translog.TranslogStats;
 import org.opensearch.index.translog.TranslogException;
 import org.opensearch.index.translog.InternalTranslogManager;
 import org.opensearch.index.translog.listener.TranslogEventListener;
@@ -226,8 +226,7 @@ public class InternalEngine extends Engine {
         this(engineConfig, IndexWriter.MAX_DOCS, LocalCheckpointTracker::new, translogEventListener);
     }
 
-    @Override
-    public TranslogManager translogManager() {
+    public InternalTranslogManager translogManager() {
         return translogManager;
     }
 
@@ -257,7 +256,7 @@ public class InternalEngine extends Engine {
             try {
                 store.trimUnsafeCommits(engineConfig.getTranslogConfig().getTranslogPath());
                 final Map<String, String> userData = store.readLastCommittedSegmentsInfo().getUserData();
-                String translogUUID = Objects.requireNonNull(userData.get(Translog.TRANSLOG_UUID_KEY));
+                final String translogUUID = Objects.requireNonNull(userData.get(Translog.TRANSLOG_UUID_KEY));
                 TranslogEventListener internalTranslogEventListener = new TranslogEventListener() {
                     @Override
                     public void onAfterTranslogSync() {
@@ -289,8 +288,7 @@ public class InternalEngine extends Engine {
                     () -> getLocalCheckpointTracker(),
                     translogUUID,
                     new CompositeTranslogEventListener(Arrays.asList(internalTranslogEventListener, translogEventListener), shardId),
-                    this::ensureOpen,
-                    engineConfig.getTranslogFactory()
+                    this::ensureOpen
                 );
                 this.translogManager = translogManagerRef;
                 this.softDeletesPolicy = newSoftDeletesPolicy();
@@ -483,6 +481,17 @@ public class InternalEngine extends Engine {
     }
 
     @Override
+    public int restoreLocalHistoryFromTranslog(TranslogRecoveryRunner translogRecoveryRunner) throws IOException {
+        try (ReleasableLock ignored = readLock.acquire()) {
+            ensureOpen();
+            final long localCheckpoint = localCheckpointTracker.getProcessedCheckpoint();
+            try (Translog.Snapshot snapshot = translogManager().getTranslog().newSnapshot(localCheckpoint + 1, Long.MAX_VALUE)) {
+                return translogRecoveryRunner.run(this, snapshot);
+            }
+        }
+    }
+
+    @Override
     public int fillSeqNoGaps(long primaryTerm) throws IOException {
         try (ReleasableLock ignored = writeLock.acquire()) {
             ensureOpen();
@@ -522,9 +531,89 @@ public class InternalEngine extends Engine {
         }
     }
 
+    @Override
+    public InternalEngine recoverFromTranslog(TranslogRecoveryRunner translogRecoveryRunner, long recoverUpToSeqNo) throws IOException {
+        try (ReleasableLock lock = readLock.acquire()) {
+            ensureOpen();
+            if (translogManager.getPendingTranslogRecovery().get() == false) {
+                throw new IllegalStateException("Engine has already been recovered");
+            }
+            try {
+                recoverFromTranslogInternal(translogRecoveryRunner, recoverUpToSeqNo);
+            } catch (Exception e) {
+                try {
+                    translogManager.getPendingTranslogRecovery().set(true); // just play safe and never allow commits on this see
+                                                                            // #ensureCanFlush
+                    failEngine("failed to recover from translog", e);
+                } catch (Exception inner) {
+                    e.addSuppressed(inner);
+                }
+                throw e;
+            }
+        }
+        return this;
+    }
+
+    @Override
+    public void skipTranslogRecovery() {
+        translogManager.skipTranslogRecovery();
+    }
+
+    private void recoverFromTranslogInternal(TranslogRecoveryRunner translogRecoveryRunner, long recoverUpToSeqNo) throws IOException {
+        final int opsRecovered;
+        final long localCheckpoint = getProcessedLocalCheckpoint();
+        if (localCheckpoint < recoverUpToSeqNo) {
+            try (Translog.Snapshot snapshot = translogManager.getTranslog().newSnapshot(localCheckpoint + 1, recoverUpToSeqNo)) {
+                opsRecovered = translogRecoveryRunner.run(this, snapshot);
+            } catch (Exception e) {
+                throw new EngineException(shardId, "failed to recover from translog", e);
+            }
+        } else {
+            opsRecovered = 0;
+        }
+        // flush if we recovered something or if we have references to older translogs
+        // note: if opsRecovered == 0 and we have older translogs it means they are corrupted or 0 length.
+        assert translogManager.getPendingTranslogRecovery().get() : "translogRecovery is not pending but should be";
+        translogManager.getPendingTranslogRecovery().set(false); // we are good - now we can commit
+        logger.trace(
+            () -> new ParameterizedMessage(
+                "flushing post recovery from translog: ops recovered [{}], current translog generation [{}]",
+                opsRecovered,
+                translogManager.getTranslog().currentFileGeneration()
+            )
+        );
+        flush(false, true);
+        translogManager.trimUnreferencedReaders();
+    }
+
     // Package private for testing purposes only
     boolean hasSnapshottedCommits() {
         return combinedDeletionPolicy.hasSnapshottedCommits();
+    }
+
+    @Override
+    public boolean isTranslogSyncNeeded() {
+        return translogManager.getTranslog().syncNeeded();
+    }
+
+    @Override
+    public boolean ensureTranslogSynced(Stream<Translog.Location> locations) throws IOException {
+        return translogManager.ensureTranslogSynced(locations);
+    }
+
+    @Override
+    public void syncTranslog() throws IOException {
+        translogManager.syncTranslog();
+    }
+
+    @Override
+    public TranslogStats getTranslogStats() {
+        return translogManager.getTranslog().stats();
+    }
+
+    @Override
+    public Translog.Location getTranslogLastWriteLocation() {
+        return translogManager.getTranslogLastWriteLocation();
     }
 
     private void revisitIndexDeletionPolicyOnTranslogSynced() {
@@ -1799,10 +1888,31 @@ public class InternalEngine extends Engine {
         final long localCheckpointOfLastCommit = Long.parseLong(
             lastCommittedSegmentInfos.userData.get(SequenceNumbers.LOCAL_CHECKPOINT_KEY)
         );
-        return translogManager.shouldPeriodicallyFlush(
-            localCheckpointOfLastCommit,
-            config().getIndexSettings().getFlushThresholdSize().getBytes()
-        );
+        final long translogGenerationOfLastCommit = translogManager.getTranslog()
+            .getMinGenerationForSeqNo(localCheckpointOfLastCommit + 1).translogFileGeneration;
+        final long flushThreshold = config().getIndexSettings().getFlushThresholdSize().getBytes();
+        if (translogManager.getTranslog().sizeInBytesByMinGen(translogGenerationOfLastCommit) < flushThreshold) {
+            return false;
+        }
+        /*
+         * We flush to reduce the size of uncommitted translog but strictly speaking the uncommitted size won't always be
+         * below the flush-threshold after a flush. To avoid getting into an endless loop of flushing, we only enable the
+         * periodically flush condition if this condition is disabled after a flush. The condition will change if the new
+         * commit points to the later generation the last commit's(eg. gen-of-last-commit < gen-of-new-commit)[1].
+         *
+         * When the local checkpoint equals to max_seqno, and translog-gen of the last commit equals to translog-gen of
+         * the new commit, we know that the last generation must contain operations because its size is above the flush
+         * threshold and the flush-threshold is guaranteed to be higher than an empty translog by the setting validation.
+         * This guarantees that the new commit will point to the newly rolled generation. In fact, this scenario only
+         * happens when the generation-threshold is close to or above the flush-threshold; otherwise we have rolled
+         * generations as the generation-threshold was reached, then the first condition (eg. [1]) is already satisfied.
+         *
+         * This method is to maintain translog only, thus IndexWriter#hasUncommittedChanges condition is not considered.
+         */
+        final long translogGenerationOfNewCommit = translogManager.getTranslog()
+            .getMinGenerationForSeqNo(localCheckpointTracker.getProcessedCheckpoint() + 1).translogFileGeneration;
+        return translogGenerationOfLastCommit < translogGenerationOfNewCommit
+            || localCheckpointTracker.getProcessedCheckpoint() == localCheckpointTracker.getMaxSeqNo();
     }
 
     @Override
@@ -1841,9 +1951,9 @@ public class InternalEngine extends Engine {
                     )) {
                     translogManager.ensureCanFlush();
                     try {
-                        translogManager.rollTranslogGeneration();
+                        translogManager.getTranslog().rollGeneration();
                         logger.trace("starting commit for flush; commitTranslog=true");
-                        commitIndexWriter(indexWriter, translogManager.getTranslogUUID());
+                        commitIndexWriter(indexWriter, translogManager.getTranslog());
                         logger.trace("finished commit for flush");
 
                         // a temporary debugging to investigate test failure - issue#32827. Remove when the issue is resolved
@@ -1904,6 +2014,66 @@ public class InternalEngine extends Engine {
             }
         } finally {
             store.decRef();
+        }
+    }
+
+    @Override
+    public void rollTranslogGeneration() throws EngineException {
+        try (ReleasableLock ignored = readLock.acquire()) {
+            ensureOpen();
+            translogManager().getTranslog().rollGeneration();
+            translogManager().getTranslog().trimUnreferencedReaders();
+        } catch (AlreadyClosedException e) {
+            failOnTragicEvent(e);
+            throw e;
+        } catch (Exception e) {
+            try {
+                failEngine("translog trimming failed", e);
+            } catch (Exception inner) {
+                e.addSuppressed(inner);
+            }
+            throw new EngineException(shardId, "failed to roll translog", e);
+        }
+    }
+
+    @Override
+    public void trimUnreferencedTranslogFiles() throws EngineException {
+        try (ReleasableLock lock = readLock.acquire()) {
+            ensureOpen();
+            translogManager().getTranslog().trimUnreferencedReaders();
+        } catch (AlreadyClosedException e) {
+            failOnTragicEvent(e);
+            throw e;
+        } catch (Exception e) {
+            try {
+                failEngine("translog trimming failed", e);
+            } catch (Exception inner) {
+                e.addSuppressed(inner);
+            }
+            throw new EngineException(shardId, "failed to trim translog", e);
+        }
+    }
+
+    @Override
+    public boolean shouldRollTranslogGeneration() {
+        return translogManager().getTranslog().shouldRollGeneration();
+    }
+
+    @Override
+    public void trimOperationsFromTranslog(long belowTerm, long aboveSeqNo) throws EngineException {
+        try (ReleasableLock lock = readLock.acquire()) {
+            ensureOpen();
+            translogManager().getTranslog().trimOperations(belowTerm, aboveSeqNo);
+        } catch (AlreadyClosedException e) {
+            failOnTragicEvent(e);
+            throw e;
+        } catch (Exception e) {
+            try {
+                failEngine("translog operations trimming failed", e);
+            } catch (Exception inner) {
+                e.addSuppressed(inner);
+            }
+            throw new EngineException(shardId, "failed to trim translog operations", e);
         }
     }
 
@@ -2073,8 +2243,8 @@ public class InternalEngine extends Engine {
             }
             failEngine("already closed by tragic event on the index writer", tragicException);
             engineFailed = true;
-        } else if (translogManager.getTragicExceptionIfClosed() != null) {
-            failEngine("already closed by tragic event on the translog", translogManager.getTragicExceptionIfClosed());
+        } else if (translogManager.getTranslog().isOpen() == false && translogManager.getTranslog().getTragicException() != null) {
+            failEngine("already closed by tragic event on the translog", translogManager.getTranslog().getTragicException());
             engineFailed = true;
         } else if (failedEngine.get() == null && isClosed.get() == false) { // we are closed but the engine is not failed yet?
             // this smells like a bug - we only expect ACE if we are in a fatal case ie. either translog or IW is closed by
@@ -2099,7 +2269,7 @@ public class InternalEngine extends Engine {
             return failOnTragicEvent((AlreadyClosedException) e);
         } else if (e != null
             && ((indexWriter.isOpen() == false && indexWriter.getTragicException() == e)
-                || (translogManager.getTragicExceptionIfClosed() == e))) {
+                || (translogManager.getTranslog().isOpen() == false && translogManager.getTranslog().getTragicException() == e))) {
                     // this spot on - we are handling the tragic event exception here so we have to fail the engine
                     // right away
                     failEngine(source, e);
@@ -2201,7 +2371,7 @@ public class InternalEngine extends Engine {
                     logger.warn("Failed to close ReaderManager", e);
                 }
                 try {
-                    IOUtils.close(translogManager);
+                    IOUtils.close(translogManager.getTranslog());
                 } catch (Exception e) {
                     logger.warn("Failed to close translog", e);
                 }
@@ -2469,7 +2639,7 @@ public class InternalEngine extends Engine {
      * @param writer   the index writer to commit
      * @param translogUUID the translogUUID
      */
-    protected void commitIndexWriter(final IndexWriter writer, final String translogUUID) throws IOException {
+    protected void commitIndexWriter(final IndexWriter writer, final Translog translog) throws IOException {
         translogManager.ensureCanFlush();
         try {
             final long localCheckpoint = localCheckpointTracker.getProcessedCheckpoint();
@@ -2679,6 +2849,20 @@ public class InternalEngine extends Engine {
         } finally {
             IOUtils.close(searcher);
         }
+    }
+
+    /**
+     * Creates a new history snapshot from the translog file instead of the lucene index
+     *
+     * @deprecated reading history operations from the translog file is deprecated and will be removed in the next release
+     *
+     * Use {@link Engine#newChangesSnapshot(String, long, long, boolean, boolean)} instead
+     */
+    @Deprecated
+    @Override
+    public Translog.Snapshot newChangesSnapshotFromTranslogFile(String source, long fromSeqNo, long toSeqNo, boolean requiredFullRange)
+        throws IOException {
+        return translogManager().getTranslog().newSnapshot(fromSeqNo, toSeqNo, requiredFullRange);
     }
 
     public int countNumberOfHistoryOperations(String source, long fromSeqNo, long toSeqNo) throws IOException {

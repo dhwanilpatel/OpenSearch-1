@@ -141,7 +141,7 @@ public class RestClientDocumentation {
         {
             //tag::rest-client-init-node-selector
             RestClientBuilder builder = RestClient.builder(
-                new HttpHost("http", "localhost", 9200));
+                new HttpHost("localhost", 9200, "http"));
             builder.setNodeSelector(NodeSelector.SKIP_DEDICATED_CLUSTER_MANAGERS); // <1>
             //end::rest-client-init-node-selector
         }

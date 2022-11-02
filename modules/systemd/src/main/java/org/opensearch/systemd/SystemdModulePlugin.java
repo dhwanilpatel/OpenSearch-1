@@ -66,11 +66,11 @@ public class SystemdModulePlugin extends Plugin implements ClusterPlugin {
     }
 
     @SuppressWarnings("unused")
-    public SystemdModulePlugin() {
+    public SystemdPlugin() {
         this(System.getenv("OPENSEARCH_SD_NOTIFY"));
     }
 
-    SystemdModulePlugin(final String esSDNotify) {
+    SystemdPlugin(final String esSDNotify) {
         logger.trace("OPENSEARCH_SD_NOTIFY is set to [{}]", esSDNotify);
         if (esSDNotify == null) {
             enabled = false;

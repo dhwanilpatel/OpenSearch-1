@@ -257,8 +257,7 @@ public final class EngineConfig {
             retentionLeasesSupplier,
             primaryTermSupplier,
             tombstoneDocSupplier,
-            false,
-            new InternalTranslogFactory()
+            false
         );
     }
 
@@ -289,8 +288,7 @@ public final class EngineConfig {
         Supplier<RetentionLeases> retentionLeasesSupplier,
         LongSupplier primaryTermSupplier,
         TombstoneDocSupplier tombstoneDocSupplier,
-        boolean isReadOnlyReplica,
-        TranslogFactory translogFactory
+        boolean isReadOnlyReplica
     ) {
         if (isReadOnlyReplica && indexSettings.isSegRepEnabled() == false) {
             throw new IllegalArgumentException("Shard can only be wired as a read only replica with Segment Replication enabled");
@@ -334,7 +332,6 @@ public final class EngineConfig {
         this.primaryTermSupplier = primaryTermSupplier;
         this.tombstoneDocSupplier = tombstoneDocSupplier;
         this.isReadOnlyReplica = isReadOnlyReplica;
-        this.translogFactory = translogFactory;
     }
 
     /**
@@ -537,14 +534,6 @@ public final class EngineConfig {
      */
     public boolean isReadOnlyReplica() {
         return indexSettings.isSegRepEnabled() && isReadOnlyReplica;
-    }
-
-    /**
-     * Returns the underlying translog factory
-     * @return the translog factory
-     */
-    public TranslogFactory getTranslogFactory() {
-        return translogFactory;
     }
 
     /**

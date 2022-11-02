@@ -39,7 +39,7 @@ import java.util.List;
  * A geo-grid aggregation. Defines multiple buckets, each representing a cell in a geo-grid of a specific
  * precision.
  *
- * @opensearch.api
+ * @opensearch.internal
  */
 public interface GeoGrid extends MultiBucketsAggregation {
 

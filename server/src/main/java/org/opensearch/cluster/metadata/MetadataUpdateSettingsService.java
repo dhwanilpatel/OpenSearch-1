@@ -47,8 +47,6 @@ import org.opensearch.cluster.block.ClusterBlocks;
 import org.opensearch.cluster.routing.RoutingTable;
 import org.opensearch.cluster.routing.allocation.AllocationService;
 import org.opensearch.cluster.routing.allocation.AwarenessReplicaBalance;
-import org.opensearch.cluster.service.ClusterManagerTaskKeys;
-import org.opensearch.cluster.service.ClusterManagerTaskThrottler;
 import org.opensearch.cluster.service.ClusterService;
 import org.opensearch.common.Priority;
 import org.opensearch.common.ValidationException;
@@ -95,6 +93,8 @@ public class MetadataUpdateSettingsService {
 
     private AwarenessReplicaBalance awarenessReplicaBalance;
 
+    private AwarenessReplicaBalance awarenessReplicaBalance;
+
     @Inject
     public MetadataUpdateSettingsService(
         ClusterService clusterService,
@@ -112,9 +112,6 @@ public class MetadataUpdateSettingsService {
         this.indicesService = indicesService;
         this.shardLimitValidator = shardLimitValidator;
         this.awarenessReplicaBalance = awarenessReplicaBalance;
-
-        // Task is onboarded for throttling, it will get retried from associated TransportClusterManagerNodeAction.
-        updateSettingsTaskKey = clusterService.registerClusterManagerTask(ClusterManagerTaskKeys.UPDATE_SETTINGS_KEY, true);
     }
 
     public void updateSettings(

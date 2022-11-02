@@ -59,7 +59,7 @@ import java.util.function.Function;
 /**
  * Base Aggregation Builder for geogrid aggs
  *
- * @opensearch.api
+ * @opensearch.internal
  */
 public abstract class GeoGridAggregationBuilder extends ValuesSourceAggregationBuilder<GeoGridAggregationBuilder> {
     /* recognized field names in JSON */

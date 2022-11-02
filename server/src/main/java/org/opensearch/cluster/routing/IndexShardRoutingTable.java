@@ -773,66 +773,6 @@ public class IndexShardRoutingTable implements Iterable<ShardRouting> {
     }
 
     /**
-     * Key for WeightedRouting Shard Iterator
-     *
-     * @opensearch.internal
-     */
-    public static class WeightedRoutingKey {
-        private final WeightedRouting weightedRouting;
-
-        public WeightedRoutingKey(WeightedRouting weightedRouting) {
-            this.weightedRouting = weightedRouting;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            WeightedRoutingKey key = (WeightedRoutingKey) o;
-            if (!weightedRouting.equals(key.weightedRouting)) return false;
-            return true;
-        }
-
-        @Override
-        public int hashCode() {
-            int result = weightedRouting.hashCode();
-            return result;
-        }
-    }
-
-    /**
-     * *
-     * Gets active shard routing from memory if available, else calculates and put it in memory.
-     */
-    private List<ShardRouting> getActiveShardsByWeight(WeightedRouting weightedRouting, DiscoveryNodes nodes, double defaultWeight) {
-        WeightedRoutingKey key = new WeightedRoutingKey(weightedRouting);
-        List<ShardRouting> shardRoutings = activeShardsByWeight.get(key);
-        if (shardRoutings == null) {
-            synchronized (shardsByWeightMutex) {
-                shardRoutings = shardsOrderedByWeight(activeShards, weightedRouting, nodes, defaultWeight);
-                activeShardsByWeight = new MapBuilder().put(key, shardRoutings).immutableMap();
-            }
-        }
-        return shardRoutings;
-    }
-
-    /**
-     * *
-     * Gets initializing shard routing from memory if available, else calculates and put it in memory.
-     */
-    private List<ShardRouting> getInitializingShardsByWeight(WeightedRouting weightedRouting, DiscoveryNodes nodes, double defaultWeight) {
-        WeightedRoutingKey key = new WeightedRoutingKey(weightedRouting);
-        List<ShardRouting> shardRoutings = initializingShardsByWeight.get(key);
-        if (shardRoutings == null) {
-            synchronized (shardsByWeightMutex) {
-                shardRoutings = shardsOrderedByWeight(activeShards, weightedRouting, nodes, defaultWeight);
-                initializingShardsByWeight = new MapBuilder().put(key, shardRoutings).immutableMap();
-            }
-        }
-        return shardRoutings;
-    }
-
-    /**
      * Builder of an index shard routing table.
      *
      * @opensearch.internal

@@ -58,7 +58,6 @@ import java.util.HashSet;
 import java.util.Map;
 
 import static org.hamcrest.Matchers.is;
-import static org.opensearch.test.VersionUtils.allVersions;
 import static org.opensearch.test.VersionUtils.maxCompatibleVersion;
 import static org.opensearch.test.VersionUtils.randomCompatibleVersion;
 import static org.opensearch.test.VersionUtils.randomOpenSearchVersion;
@@ -332,5 +331,15 @@ public class JoinTaskExecutorTests extends OpenSearchTestCase {
             Collections.singleton(DiscoveryNodeRole.CLUSTER_MANAGER_ROLE),
             Version.CURRENT
         );
+    }
+
+    /**
+     * Validate isBecomeClusterManagerTask() can identify "become cluster manager task" properly
+     */
+    public void testIsBecomeClusterManagerTask() {
+        JoinTaskExecutor.Task joinTaskOfMaster = JoinTaskExecutor.newBecomeMasterTask();
+        assertThat(joinTaskOfMaster.isBecomeClusterManagerTask(), is(true));
+        JoinTaskExecutor.Task joinTaskOfClusterManager = JoinTaskExecutor.newBecomeClusterManagerTask();
+        assertThat(joinTaskOfClusterManager.isBecomeClusterManagerTask(), is(true));
     }
 }

@@ -105,7 +105,6 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import static org.opensearch.cluster.coordination.NoClusterManagerBlockService.NO_CLUSTER_MANAGER_BLOCK_ID;
-import static org.opensearch.cluster.decommission.DecommissionService.nodeCommissioned;
 import static org.opensearch.gateway.ClusterStateUpdaters.hideStateIfNotRecovered;
 import static org.opensearch.gateway.GatewayService.STATE_NOT_RECOVERED_BLOCK;
 import static org.opensearch.monitor.StatusInfo.Status.UNHEALTHY;
@@ -919,7 +918,7 @@ public class Coordinator extends AbstractLifecycleComponent implements Discovery
 
                 final boolean activePublication = currentPublication.map(CoordinatorPublication::isActiveForCurrentLeader).orElse(false);
                 if (becomingClusterManager && activePublication == false) {
-                    // cluster state update task to become cluster-manager is submitted to ClusterManagerService,
+                    // cluster state update task to become cluster-manager is submitted to MasterService,
                     // but publication has not started yet
                     assert followersChecker.getKnownFollowers().isEmpty() : followersChecker.getKnownFollowers();
                 } else {

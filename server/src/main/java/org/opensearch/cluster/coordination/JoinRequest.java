@@ -55,7 +55,7 @@ public class JoinRequest extends TransportRequest {
     /**
      * The minimum term for which the joining node will accept any cluster state publications. If the joining node is in a strictly greater
      * term than the cluster-manager it wants to join then the cluster-manager must enter a new term and hold another election. Doesn't necessarily match
-     * {@link JoinRequest#optionalJoin} and may be zero in join requests sent prior to {@code LegacyESVersion#V_7_7_0}.
+     * {@link JoinRequest#optionalJoin} and may be zero in join requests sent prior to {@link LegacyESVersion#V_7_7_0}.
      */
     private final long minimumTerm;
 

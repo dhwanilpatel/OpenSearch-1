@@ -67,8 +67,7 @@ public class EngineConfigFactoryTests extends OpenSearchTestCase {
             () -> new RetentionLeases(0, 0, Collections.emptyList()),
             null,
             null,
-            false,
-            new InternalTranslogFactory()
+            false
         );
 
         assertNotNull(config.getCodec());
@@ -145,8 +144,7 @@ public class EngineConfigFactoryTests extends OpenSearchTestCase {
             () -> new RetentionLeases(0, 0, Collections.emptyList()),
             null,
             null,
-            false,
-            new InternalTranslogFactory()
+            false
         );
         assertNotNull(config.getCodec());
     }

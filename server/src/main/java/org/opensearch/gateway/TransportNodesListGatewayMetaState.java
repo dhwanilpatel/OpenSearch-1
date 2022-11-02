@@ -168,7 +168,7 @@ public class TransportNodesListGatewayMetaState extends TransportNodesAction<
      *
      * @opensearch.internal
      */
-    public static class NodeRequest extends TransportRequest {
+    public static class NodeRequest extends BaseNodeRequest {
         NodeRequest() {}
 
         NodeRequest(StreamInput in) throws IOException {

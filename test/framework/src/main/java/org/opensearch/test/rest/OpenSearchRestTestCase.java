@@ -143,7 +143,7 @@ public abstract class OpenSearchRestTestCase extends OpenSearchTestCase {
      * Convert the entity from a {@link Response} into a map of maps.
      */
     public static Map<String, Object> entityAsMap(Response response) throws IOException {
-        XContentType xContentType = XContentType.fromMediaType(response.getEntity().getContentType());
+        XContentType xContentType = XContentType.fromMediaType(response.getEntity().getContentType().getValue());
         // EMPTY and THROW are fine here because `.map` doesn't use named x content or deprecation
         try (
             XContentParser parser = xContentType.xContent()
@@ -161,7 +161,7 @@ public abstract class OpenSearchRestTestCase extends OpenSearchTestCase {
      * Convert the entity from a {@link Response} into a list of maps.
      */
     public static List<Object> entityAsList(Response response) throws IOException {
-        XContentType xContentType = XContentType.fromMediaType(response.getEntity().getContentType());
+        XContentType xContentType = XContentType.fromMediaType(response.getEntity().getContentType().getValue());
         // EMPTY and THROW are fine here because `.map` doesn't use named x content or deprecation
         try (
             XContentParser parser = xContentType.xContent()
@@ -538,8 +538,8 @@ public abstract class OpenSearchRestTestCase extends OpenSearchTestCase {
     private void wipeCluster() throws Exception {
 
         // Clean up SLM policies before trying to wipe snapshots so that no new ones get started by SLM after wiping
-        if (nodeVersions.first().before(Version.V_1_0_0)) { // SLM was introduced
-                                                            // in version 7.4
+        if (nodeVersions.first().onOrAfter(LegacyESVersion.V_7_4_0) && nodeVersions.first().before(Version.V_1_0_0)) { // SLM was introduced
+                                                                                                                       // in version 7.4
             if (preserveSLMPoliciesUponCompletion() == false) {
                 // Clean up SLM policies before trying to wipe snapshots so that no new ones get started by SLM after wiping
                 deleteAllSLMPolicies();
@@ -658,6 +658,13 @@ public abstract class OpenSearchRestTestCase extends OpenSearchTestCase {
                 for (Object snapshot : snapshots) {
                     Map<?, ?> snapshotInfo = (Map<?, ?>) snapshot;
                     String name = (String) snapshotInfo.get("snapshot");
+                    // Parallel test jobs create an issue with preserveSnapshotsUponCompletion set within subclasses.
+                    // Since the snapshots are shared within the cluster, another parallel run may delete all
+                    // snapshots in the repository.
+                    // For now we hack to prevent deletion of snapshots prefixed with "force_preserve"
+                    if (name.startsWith("force_preserve")) {
+                        continue;
+                    }
                     if (SnapshotState.valueOf((String) snapshotInfo.get("state")).completed() == false) {
                         inProgressSnapshots.computeIfAbsent(repoName, key -> new ArrayList<>()).add(snapshotInfo);
                     }
@@ -1104,7 +1111,7 @@ public abstract class OpenSearchRestTestCase extends OpenSearchTestCase {
     }
 
     protected static Map<String, Object> responseAsMap(Response response) throws IOException {
-        XContentType entityContentType = XContentType.fromMediaType(response.getEntity().getContentType());
+        XContentType entityContentType = XContentType.fromMediaType(response.getEntity().getContentType().getValue());
         Map<String, Object> responseEntity = XContentHelper.convertToMap(
             entityContentType.xContent(),
             response.getEntity().getContent(),

@@ -4,6 +4,9 @@
  * The OpenSearch Contributors require contributions made to
  * this file be licensed under the Apache-2.0 license or a
  * compatible open source license.
+ *
+ * Modifications Copyright OpenSearch Contributors. See
+ * GitHub history for details.
  */
 
 /*
@@ -24,26 +27,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+apply plugin: 'opensearch.opensearchplugin'
+apply plugin: 'opensearch.yaml-rest-test'
 
-/*
- * Modifications Copyright OpenSearch Contributors. See
- * GitHub history for details.
- */
-
-package org.opensearch.example.painlessallowlist;
-
-import org.opensearch.plugins.Plugin;
-
-/**
- * A class extending {@link Plugin} intended as a signpost. Does nothing, since allowlists are extended through SPI.
- * See {@link ExampleAllowlistExtension} for implementation details.
- */
-public class MyAllowlistPlugin extends Plugin {
-
-    /**
-     * Instantiates this class.
-     */
-    public MyAllowlistPlugin() {}
-
-    // we don't actually need anything here,
+opensearchplugin {
+  name 'concurrent-search'
+  description 'The experimental plugin which implements concurrent search over Apache Lucene segments'
+  classname 'org.opensearch.search.ConcurrentSegmentSearchPlugin'
+  licenseFile rootProject.file('licenses/APACHE-LICENSE-2.0.txt')
+  noticeFile rootProject.file('NOTICE.txt')
 }
+
+yamlRestTest.enabled = false;
+testingConventions.enabled = false;

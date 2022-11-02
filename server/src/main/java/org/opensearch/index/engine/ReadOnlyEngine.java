@@ -276,6 +276,10 @@ public class ReadOnlyEngine extends Engine {
         return readerManager;
     }
 
+    public TranslogManager translogManager() {
+        return translogManager;
+    }
+
     @Override
     public TranslogManager translogManager() {
         return translogManager;
@@ -330,6 +334,21 @@ public class ReadOnlyEngine extends Engine {
     }
 
     @Override
+    public boolean isTranslogSyncNeeded() {
+        return translogManager.isTranslogSyncNeeded();
+    }
+
+    @Override
+    public boolean ensureTranslogSynced(Stream<Translog.Location> locations) throws IOException {
+        return translogManager.ensureTranslogSynced(locations);
+    }
+
+    @Override
+    public void syncTranslog() throws IOException {
+        translogManager.syncTranslog();
+    }
+
+    @Override
     public Closeable acquireHistoryRetentionLock() {
         return () -> {};
     }
@@ -342,6 +361,20 @@ public class ReadOnlyEngine extends Engine {
         boolean requiredFullRange,
         boolean accurateCount
     ) {
+        return newEmptySnapshot();
+    }
+
+    /**
+     * Creates a new history snapshot from the translog file instead of the lucene index
+     *
+     * @deprecated reading history operations from the translog file is deprecated and will be removed in the next release
+     *
+     * Use {@link Engine#newChangesSnapshot(String, long, long, boolean, boolean)} instead
+     */
+    @Deprecated
+    @Override
+    public Translog.Snapshot newChangesSnapshotFromTranslogFile(String source, long fromSeqNo, long toSeqNo, boolean requiredFullRange)
+        throws IOException {
         return newEmptySnapshot();
     }
 
@@ -363,8 +396,24 @@ public class ReadOnlyEngine extends Engine {
     }
 
     @Override
+    public TranslogStats getTranslogStats() {
+        return translogStats;
+    }
+
+    @Override
+    public Translog.Location getTranslogLastWriteLocation() {
+        return translogManager.getTranslogLastWriteLocation();
+    }
+
+    @Override
     public long getPersistedLocalCheckpoint() {
         return seqNoStats.getLocalCheckpoint();
+    }
+
+    public long getProcessedLocalCheckpoint() {
+        // the read-only engine does not process checkpoints, so its
+        // processed checkpoint is identical to its persisted one.
+        return getPersistedLocalCheckpoint();
     }
 
     @Override
@@ -449,8 +498,51 @@ public class ReadOnlyEngine extends Engine {
     public void deactivateThrottling() {}
 
     @Override
+    public void trimUnreferencedTranslogFiles() {
+        translogManager.trimUnreferencedTranslogFiles();
+    }
+
+    @Override
+    public boolean shouldRollTranslogGeneration() {
+        return translogManager.shouldRollTranslogGeneration();
+    }
+
+    @Override
+    public void rollTranslogGeneration() {
+        translogManager.rollTranslogGeneration();
+    }
+
+    @Override
+    public int restoreLocalHistoryFromTranslog(TranslogRecoveryRunner translogRecoveryRunner) {
+        return 0;
+    }
+
+    @Override
     public int fillSeqNoGaps(long primaryTerm) {
         return 0;
+    }
+
+    @Override
+    public Engine recoverFromTranslog(final TranslogRecoveryRunner translogRecoveryRunner, final long recoverUpToSeqNo) {
+        try (ReleasableLock lock = readLock.acquire()) {
+            ensureOpen();
+            try (Translog.Snapshot snapshot = newEmptySnapshot()) {
+                translogRecoveryRunner.run(this, snapshot);
+            } catch (final Exception e) {
+                throw new EngineException(shardId, "failed to recover from empty translog snapshot", e);
+            }
+        }
+        return this;
+    }
+
+    @Override
+    public void skipTranslogRecovery() {
+        translogManager.skipTranslogRecovery();
+    }
+
+    @Override
+    public void trimOperationsFromTranslog(long belowTerm, long aboveSeqNo) {
+        translogManager.trimOperationsFromTranslog(belowTerm, aboveSeqNo);
     }
 
     @Override

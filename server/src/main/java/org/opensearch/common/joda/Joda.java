@@ -391,6 +391,15 @@ public class Joda {
      *
      * @opensearch.internal
      */
+    public static boolean isJodaPattern(Version version, String pattern) {
+        return version.before(LegacyESVersion.V_7_0_0) && pattern.startsWith("8") == false;
+    }
+
+    /**
+     * parses epcoch timers
+     *
+     * @opensearch.internal
+     */
     public static class EpochTimeParser implements DateTimeParser {
 
         private static final Pattern scientificNotation = Pattern.compile("[Ee]");

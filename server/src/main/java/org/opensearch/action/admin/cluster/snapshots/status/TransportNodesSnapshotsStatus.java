@@ -207,7 +207,7 @@ public class TransportNodesSnapshotsStatus extends TransportNodesAction<
      *
      * @opensearch.internal
      */
-    public static class NodeRequest extends TransportRequest {
+    public static class NodeRequest extends BaseNodeRequest {
 
         private final List<Snapshot> snapshots;
 

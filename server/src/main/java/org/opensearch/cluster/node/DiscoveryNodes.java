@@ -281,6 +281,14 @@ public class DiscoveryNodes extends AbstractDiffable<DiscoveryNodes> implements 
     }
 
     /**
+     * Determine if the given node exists and has the right version. During upgrade from Elasticsearch version as OpenSearch node run in
+     * BWC mode and can have the version as 7.10.2 in cluster state from older cluster-manager to OpenSearch cluster-manager.
+     */
+    public String getClusterManagerNodeId() {
+        return this.clusterManagerNodeId;
+    }
+
+    /**
      * Get the id of the cluster-manager node
      *
      * @return id of the cluster-manager

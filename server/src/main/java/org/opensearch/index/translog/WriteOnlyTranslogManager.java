@@ -35,8 +35,7 @@ public class WriteOnlyTranslogManager extends InternalTranslogManager {
         Supplier<LocalCheckpointTracker> localCheckpointTrackerSupplier,
         String translogUUID,
         TranslogEventListener translogEventListener,
-        LifecycleAware engineLifecycleAware,
-        TranslogFactory translogFactory
+        LifecycleAware engineLifecycleAware
     ) throws IOException {
         super(
             translogConfig,
@@ -48,8 +47,7 @@ public class WriteOnlyTranslogManager extends InternalTranslogManager {
             localCheckpointTrackerSupplier,
             translogUUID,
             translogEventListener,
-            engineLifecycleAware,
-            translogFactory
+            engineLifecycleAware
         );
     }
 
@@ -67,10 +65,5 @@ public class WriteOnlyTranslogManager extends InternalTranslogManager {
     @Override
     public void skipTranslogRecovery() {
         // Do nothing.
-    }
-
-    @Override
-    public Translog.Snapshot newChangesSnapshot(long fromSeqNo, long toSeqNo, boolean requiredFullRange) throws IOException {
-        throw new UnsupportedOperationException("Translog snapshot unsupported with no-op translogs");
     }
 }

@@ -124,7 +124,6 @@ public class RestIndicesAction extends AbstractCatAction {
         TimeValue clusterManagerTimeout = request.paramAsTime("cluster_manager_timeout", DEFAULT_CLUSTER_MANAGER_NODE_TIMEOUT);
         // Remove the if condition and statements inside after removing MASTER_ROLE.
         if (request.hasParam("master_timeout")) {
-            deprecationLogger.deprecate("cat_indices_master_timeout_parameter", MASTER_TIMEOUT_DEPRECATED_MESSAGE);
             if (request.hasParam("cluster_manager_timeout")) {
                 throw new OpenSearchParseException(DUPLICATE_PARAMETER_ERROR_MESSAGE);
             }

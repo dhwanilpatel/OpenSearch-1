@@ -11,6 +11,7 @@ package org.opensearch.index.shard;
 import org.apache.lucene.index.IndexCommit;
 import org.apache.lucene.index.SegmentInfos;
 import org.junit.Assert;
+import org.opensearch.OpenSearchException;
 import org.opensearch.action.ActionListener;
 import org.opensearch.action.delete.DeleteRequest;
 import org.opensearch.action.index.IndexRequest;
@@ -43,7 +44,6 @@ import org.opensearch.indices.replication.SegmentReplicationTargetService;
 import org.opensearch.indices.replication.checkpoint.SegmentReplicationCheckpointPublisher;
 import org.opensearch.indices.replication.checkpoint.ReplicationCheckpoint;
 import org.opensearch.indices.replication.common.CopyState;
-import org.opensearch.indices.replication.common.ReplicationFailedException;
 import org.opensearch.indices.replication.common.ReplicationType;
 import org.opensearch.threadpool.ThreadPool;
 import org.opensearch.transport.TransportService;
@@ -694,7 +694,8 @@ public class SegmentReplicationIndexShardTests extends OpenSearchIndexLevelRepli
                 }
 
                 @Override
-                public void onReplicationFailure(SegmentReplicationState state, ReplicationFailedException e, boolean sendShardFailure) {
+                public void onReplicationFailure(SegmentReplicationState state, OpenSearchException e, boolean sendShardFailure) {
+                    assertTrue(e instanceof CancellableThreads.ExecutionCancelledException);
                     assertFalse(sendShardFailure);
                     assertEquals(SegmentReplicationState.Stage.CANCELLED, state.getStage());
                     latch.countDown();

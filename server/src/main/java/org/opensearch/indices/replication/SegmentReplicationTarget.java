@@ -18,6 +18,7 @@ import org.apache.lucene.store.ByteBuffersDataInput;
 import org.apache.lucene.store.ByteBuffersIndexInput;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.opensearch.ExceptionsHelper;
+import org.opensearch.OpenSearchException;
 import org.opensearch.action.ActionListener;
 import org.opensearch.action.StepListener;
 import org.opensearch.common.UUIDs;
@@ -104,14 +105,16 @@ public class SegmentReplicationTarget extends ReplicationTarget {
     }
 
     @Override
-    public void notifyListener(ReplicationFailedException e, boolean sendShardFailure) {
+    public void notifyListener(OpenSearchException e, boolean sendShardFailure) {
         // Cancellations still are passed to our SegmentReplicationListner as failures, if we have failed because of cancellation
         // update the stage.
         final Throwable cancelledException = ExceptionsHelper.unwrap(e, CancellableThreads.ExecutionCancelledException.class);
         if (cancelledException != null) {
             state.setStage(SegmentReplicationState.Stage.CANCELLED);
+            listener.onFailure(state(), (CancellableThreads.ExecutionCancelledException) cancelledException, sendShardFailure);
+        } else {
+            listener.onFailure(state(), e, sendShardFailure);
         }
-        listener.onFailure(state(), e, sendShardFailure);
     }
 
     @Override
@@ -147,7 +150,7 @@ public class SegmentReplicationTarget extends ReplicationTarget {
             // SegmentReplicationSource does not share CancellableThreads.
             final CancellableThreads.ExecutionCancelledException executionCancelledException =
                 new CancellableThreads.ExecutionCancelledException("replication was canceled reason [" + reason + "]");
-            notifyListener(new ReplicationFailedException("Segment replication failed", executionCancelledException), false);
+            notifyListener(executionCancelledException, false);
             throw executionCancelledException;
         });
         state.setStage(SegmentReplicationState.Stage.REPLICATING);

@@ -45,7 +45,7 @@ import java.io.IOException;
  *
  * @opensearch.internal
  */
-public class RecoveryFailedException extends ReplicationFailedException {
+public class RecoveryFailedException extends OpenSearchException {
 
     public RecoveryFailedException(StartRecoveryRequest request, Throwable cause) {
         this(request, null, cause);

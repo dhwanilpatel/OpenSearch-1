@@ -148,6 +148,7 @@ configure([
   project(":plugins:transport-nio"),
   project(":qa:die-with-dignity"),
   project(":qa:wildfly"),
+  project(":rest-api-spec"),
   project(":test:external-modules:test-delayed-aggs"),
   project(":test:fixtures:azure-fixture"),
   project(":test:fixtures:gcs-fixture"),

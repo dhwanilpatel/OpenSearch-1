@@ -22,7 +22,6 @@ import org.opensearch.index.shard.IndexShardTestCase;
 import org.opensearch.index.store.Store;
 import org.opensearch.index.store.StoreFileMetadata;
 import org.opensearch.indices.replication.checkpoint.ReplicationCheckpoint;
-import org.opensearch.indices.replication.common.ReplicationFailedException;
 import org.opensearch.indices.replication.common.ReplicationType;
 
 import java.io.IOException;
@@ -105,7 +104,7 @@ public class SegmentReplicationTargetServiceTests extends IndexShardTestCase {
             }
 
             @Override
-            public void onReplicationFailure(SegmentReplicationState state, ReplicationFailedException e, boolean sendShardFailure) {
+            public void onReplicationFailure(SegmentReplicationState state, OpenSearchException e, boolean sendShardFailure) {
                 logger.error("Unexpected error", e);
                 Assert.fail("Test should succeed");
             }
@@ -150,7 +149,7 @@ public class SegmentReplicationTargetServiceTests extends IndexShardTestCase {
                 }
 
                 @Override
-                public void onReplicationFailure(SegmentReplicationState state, ReplicationFailedException e, boolean sendShardFailure) {
+                public void onReplicationFailure(SegmentReplicationState state, OpenSearchException e, boolean sendShardFailure) {
                     // failures leave state object in last entered stage.
                     assertEquals(SegmentReplicationState.Stage.GET_CHECKPOINT_INFO, state.getStage());
                     assertEquals(expectedError, e.getCause());

@@ -862,7 +862,7 @@ public class InternalEngineTests extends EngineTestCase {
         } finally {
             IOUtils.close(engine);
         }
-        try (Engine recoveringEngine = new InternalEngine(engine.config())) {
+        try (InternalEngine recoveringEngine = new InternalEngine(engine.config())) {
             TranslogHandler translogHandler = createTranslogHandler(engine.config().getIndexSettings(), recoveringEngine);
             recoveringEngine.translogManager()
                 .recoverFromTranslog(translogHandler, recoveringEngine.getProcessedLocalCheckpoint(), Long.MAX_VALUE);
@@ -889,7 +889,7 @@ public class InternalEngineTests extends EngineTestCase {
             IOUtils.close(initialEngine);
         }
 
-        Engine recoveringEngine = null;
+        InternalEngine recoveringEngine = null;
         try {
             final AtomicBoolean committed = new AtomicBoolean();
             recoveringEngine = new InternalEngine(initialEngine.config()) {
@@ -915,7 +915,7 @@ public class InternalEngineTests extends EngineTestCase {
         final List<Long> seqNos = LongStream.range(0, docs).boxed().collect(Collectors.toList());
         Randomness.shuffle(seqNos);
         Engine initialEngine = null;
-        Engine recoveringEngine = null;
+        InternalEngine recoveringEngine = null;
         Store store = createStore();
         final AtomicInteger counter = new AtomicInteger();
         try {
@@ -5467,8 +5467,7 @@ public class InternalEngineTests extends EngineTestCase {
             }
             try (InternalEngine engine = new InternalEngine(engineConfig)) {
                 engine.ensureOpen();
-                final long currentTranslogGeneration = assertAndGetInternalTranslogManager(engine.translogManager()).getTranslog()
-                    .currentFileGeneration();
+                final long currentTranslogGeneration = engine.translogManager().getTranslog().currentFileGeneration();
                 TranslogHandler translogHandler = createTranslogHandler(engineConfig.getIndexSettings(), engine);
                 engine.translogManager().recoverFromTranslog(translogHandler, engine.getProcessedLocalCheckpoint(), globalCheckpoint.get());
                 engine.translogManager().restoreLocalHistoryFromTranslog(engine.getProcessedLocalCheckpoint(), translogHandler);
@@ -6451,8 +6450,28 @@ public class InternalEngineTests extends EngineTestCase {
                 }
             }
             List<Translog.Operation> luceneOps = readAllOperationsBasedOnSource(engine);
+            // todo remove in next release
+            List<Translog.Operation> translogOps = readAllOperationsBasedOnTranslog(engine);
             assertThat(luceneOps.stream().map(o -> o.seqNo()).collect(Collectors.toList()), containsInAnyOrder(expectedSeqNos.toArray()));
+            assertThat(translogOps.stream().map(o -> o.seqNo()).collect(Collectors.toList()), containsInAnyOrder(expectedSeqNos.toArray()));
         }
+    }
+
+    /**
+     * Test creating new snapshot from translog file
+     *
+     * @deprecated reading history operations from the translog file is deprecated and will be removed in the next release
+     */
+    @Deprecated
+    private static List<Translog.Operation> readAllOperationsBasedOnTranslog(Engine engine) throws IOException {
+        final List<Translog.Operation> operations = new ArrayList<>();
+        try (Translog.Snapshot snapshot = engine.newChangesSnapshotFromTranslogFile("test", 0, Long.MAX_VALUE, false)) {
+            Translog.Operation op;
+            while ((op = snapshot.next()) != null) {
+                operations.add(op);
+            }
+        }
+        return operations;
     }
 
     public void testLuceneHistoryOnPrimary() throws Exception {

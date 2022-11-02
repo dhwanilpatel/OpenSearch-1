@@ -44,10 +44,25 @@ public interface LocalNodeClusterManagerListener extends ClusterStateListener {
      */
     void onClusterManager();
 
-    /**
-     * Called when the local node used to be the cluster-manager, a new cluster-manager was elected and it's no longer the local node.
-     */
-    void offClusterManager();
+/**
+ * Base class for node transport requests
+ *
+ * @opensearch.internal
+ *
+ * @deprecated this class is deprecated and classes will extend TransportRequest directly
+ */
+// TODO: this class can be removed in main once 7.x is bumped to 7.4.0
+@Deprecated
+public abstract class BaseNodeRequest extends TransportRequest {
+
+    public BaseNodeRequest() {}
+
+    public BaseNodeRequest(StreamInput in) throws IOException {
+        super(in);
+        if (in.getVersion().before(LegacyESVersion.V_7_3_0)) {
+            in.readString(); // previously nodeId
+        }
+    }
 
     @Override
     default void clusterChanged(ClusterChangedEvent event) {

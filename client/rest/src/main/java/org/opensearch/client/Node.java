@@ -256,9 +256,6 @@ public class Node {
             return roles.contains("search");
         }
 
-        /**
-         * Convert roles to string representation
-         */
         @Override
         public String toString() {
             return String.join(",", roles);

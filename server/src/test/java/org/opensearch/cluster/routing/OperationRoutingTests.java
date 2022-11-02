@@ -1012,32 +1012,6 @@ public class OperationRoutingTests extends OpenSearchTestCase {
         return allNodes;
     }
 
-    private DiscoveryNode[] setUpNodesForWeightedRouting() {
-        List<String> zones = Arrays.asList("a", "a", "b", "b", "c", "c");
-        DiscoveryNode[] allNodes = new DiscoveryNode[7];
-        int i = 0;
-        for (String zone : zones) {
-            DiscoveryNode node = new DiscoveryNode(
-                "node_" + zone + "_" + i,
-                buildNewFakeTransportAddress(),
-                singletonMap("zone", zone),
-                Collections.singleton(DiscoveryNodeRole.DATA_ROLE),
-                Version.CURRENT
-            );
-            allNodes[i++] = node;
-        }
-
-        DiscoveryNode clusterManager = new DiscoveryNode(
-            "cluster-manager",
-            buildNewFakeTransportAddress(),
-            Collections.emptyMap(),
-            Collections.singleton(DiscoveryNodeRole.CLUSTER_MANAGER_ROLE),
-            Version.CURRENT
-        );
-        allNodes[i] = clusterManager;
-        return allNodes;
-    }
-
     public void testAllocationAwarenessDeprecation() {
         OperationRouting routing = new OperationRouting(
             Settings.builder()

@@ -59,8 +59,6 @@ import org.opensearch.cluster.routing.ShardRouting;
 import org.opensearch.cluster.routing.ShardRoutingState;
 import org.opensearch.cluster.routing.allocation.AllocationService;
 import org.opensearch.cluster.routing.allocation.AwarenessReplicaBalance;
-import org.opensearch.cluster.service.ClusterManagerTaskKeys;
-import org.opensearch.cluster.service.ClusterManagerTaskThrottler;
 import org.opensearch.cluster.service.ClusterService;
 import org.opensearch.common.Nullable;
 import org.opensearch.common.Priority;
@@ -148,7 +146,6 @@ public class MetadataCreateIndexService {
     private final ShardLimitValidator shardLimitValidator;
     private final boolean forbidPrivateIndexSettings;
     private final Set<IndexSettingProvider> indexSettingProviders = new HashSet<>();
-    private final ClusterManagerTaskThrottler.ThrottlingKey createIndexTaskKey;
     private AwarenessReplicaBalance awarenessReplicaBalance;
 
     public MetadataCreateIndexService(
@@ -179,9 +176,6 @@ public class MetadataCreateIndexService {
         this.forbidPrivateIndexSettings = forbidPrivateIndexSettings;
         this.shardLimitValidator = shardLimitValidator;
         this.awarenessReplicaBalance = awarenessReplicaBalance;
-
-        // Task is onboarded for throttling, it will get retried from associated TransportClusterManagerNodeAction.
-        createIndexTaskKey = clusterService.registerClusterManagerTask(ClusterManagerTaskKeys.CREATE_INDEX_KEY, true);
     }
 
     /**
@@ -1184,7 +1178,7 @@ public class MetadataCreateIndexService {
         final boolean forbidPrivateIndexSettings,
         Optional<String> indexName
     ) {
-        List<String> validationErrors = validateIndexCustomPath(settings, env.sharedDataDir());
+        List<String> validationErrors = validateIndexCustomPath(settings, env.sharedDataFile());
         if (forbidPrivateIndexSettings) {
             validationErrors.addAll(validatePrivateSettingsNotExplicitlySet(settings, indexScopedSettings));
         }

@@ -109,6 +109,7 @@ import org.opensearch.index.engine.EngineConfigFactory;
 import org.opensearch.index.engine.EngineException;
 import org.opensearch.index.engine.EngineFactory;
 import org.opensearch.index.engine.NRTReplicationEngine;
+import org.opensearch.index.engine.InternalEngine;
 import org.opensearch.index.engine.ReadOnlyEngine;
 import org.opensearch.index.engine.RefreshFailedEngineException;
 import org.opensearch.index.engine.SafeCommitInfo;
@@ -308,6 +309,8 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
     private final Store remoteStore;
     private final TranslogFactory translogFactory;
 
+    private final Store remoteStore;
+
     public IndexShard(
         final ShardRouting shardRouting,
         final IndexSettings indexSettings,
@@ -329,7 +332,6 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
         final Runnable globalCheckpointSyncer,
         final RetentionLeaseSyncer retentionLeaseSyncer,
         final CircuitBreakerService circuitBreakerService,
-        final TranslogFactory translogFactory,
         @Nullable final SegmentReplicationCheckpointPublisher checkpointPublisher,
         @Nullable final Store remoteStore
     ) throws IOException {
@@ -416,7 +418,6 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
         this.refreshPendingLocationListener = new RefreshPendingLocationListener();
         this.checkpointPublisher = checkpointPublisher;
         this.remoteStore = remoteStore;
-        this.translogFactory = translogFactory;
     }
 
     public ThreadPool getThreadPool() {
@@ -1366,14 +1367,6 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
             return getEngine().acquireLastIndexCommit(flushFirst);
         } else {
             throw new IllegalIndexShardStateException(shardId, state, "snapshot is not allowed");
-        }
-    }
-
-    private Optional<NRTReplicationEngine> getReplicationEngine() {
-        if (getEngine() instanceof NRTReplicationEngine) {
-            return Optional.of((NRTReplicationEngine) getEngine());
-        } else {
-            return Optional.empty();
         }
     }
 
@@ -2402,7 +2395,7 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
     /**
      * Creates a new history snapshot for reading operations since
      * the provided starting seqno (inclusive) and ending seqno (inclusive)
-     * The returned snapshot can be retrieved from either Lucene index or translog files.
+     * The returned snapshot is retrieved from a Lucene index.
      */
     public Translog.Snapshot getHistoryOperations(String reason, long startingSeqNo, long endSeqNo, boolean accurateCount)
         throws IOException {
@@ -2410,14 +2403,15 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
     }
 
     /**
-     * Creates a new history snapshot from the translog instead of the lucene index. Required for cross cluster replication.
-     * Use the recommended {@link #getHistoryOperations(String, long, long, boolean)} method for other cases.
-     * This method should only be invoked if Segment Replication or Remote Store is not enabled.
+     * Creates a new history snapshot from the translog file instead of the lucene index
+     *
+     * @deprecated reading history operations from the translog file is deprecated and will be removed in the next release
+     *
+     * Use {@link IndexShard#getHistoryOperations(String, long, long, boolean)} instead
      */
-    public Translog.Snapshot getHistoryOperationsFromTranslog(long startingSeqNo, long endSeqNo) throws IOException {
-        assert (indexSettings.isSegRepEnabled() || indexSettings.isRemoteStoreEnabled()) == false
-            : "unsupported operation for segment replication enabled indices or remote store backed indices";
-        return getEngine().translogManager().newChangesSnapshot(startingSeqNo, endSeqNo, true);
+    @Deprecated
+    public Translog.Snapshot getHistoryOperationsFromTranslogFile(String reason, long startingSeqNo, long endSeqNo) throws IOException {
+        return getEngine().newChangesSnapshotFromTranslogFile(reason, startingSeqNo, endSeqNo, true);
     }
 
     /**
@@ -2783,11 +2777,24 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
     }
 
     /**
-     * Fetch the latest checkpoint that has been processed but not necessarily persisted.
+     * Fetch the latest checkpoint that has been processed but not necessarily persisted. This should be used only when Segment Replication is enabled.
      * Also see {@link #getLocalCheckpoint()}.
      */
     public long getProcessedLocalCheckpoint() {
-        return getEngine().getProcessedLocalCheckpoint();
+        // Returns checkpoint only if the current engine is an instance of NRTReplicationEngine or InternalEngine
+        return getReplicationEngine().map(NRTReplicationEngine::getProcessedLocalCheckpoint).orElseGet(() -> {
+            final Engine engine = getEngine();
+            assert engine instanceof InternalEngine;
+            return ((InternalEngine) engine).getProcessedLocalCheckpoint();
+        });
+    }
+
+    private Optional<NRTReplicationEngine> getReplicationEngine() {
+        if (getEngine() instanceof NRTReplicationEngine) {
+            return Optional.of((NRTReplicationEngine) getEngine());
+        } else {
+            return Optional.empty();
+        }
     }
 
     /**
@@ -3328,8 +3335,7 @@ public class IndexShard extends AbstractIndexShardComponent implements IndicesCl
             replicationTracker::getRetentionLeases,
             () -> getOperationPrimaryTerm(),
             tombstoneDocSupplier(),
-            indexSettings.isSegRepEnabled() && shardRouting.primary() == false,
-            translogFactory
+            indexSettings.isSegRepEnabled() && shardRouting.primary() == false
         );
     }
 

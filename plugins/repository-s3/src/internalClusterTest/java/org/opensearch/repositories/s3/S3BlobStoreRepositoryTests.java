@@ -144,6 +144,56 @@ public class S3BlobStoreRepositoryTests extends OpenSearchMockAPIBasedRepository
         return builder.build();
     }
 
+    public void testEnforcedCooldownPeriod() throws IOException {
+        final String repoName = createRepository(
+            randomName(),
+            Settings.builder().put(repositorySettings()).put(S3Repository.COOLDOWN_PERIOD.getKey(), TEST_COOLDOWN_PERIOD).build()
+        );
+
+        final SnapshotId fakeOldSnapshot = client().admin()
+            .cluster()
+            .prepareCreateSnapshot(repoName, "snapshot-old")
+            .setWaitForCompletion(true)
+            .setIndices()
+            .get()
+            .getSnapshotInfo()
+            .snapshotId();
+        final RepositoriesService repositoriesService = internalCluster().getCurrentClusterManagerNodeInstance(RepositoriesService.class);
+        final BlobStoreRepository repository = (BlobStoreRepository) repositoriesService.repository(repoName);
+        final RepositoryData repositoryData = getRepositoryData(repository);
+        final RepositoryData modifiedRepositoryData = repositoryData.withVersions(
+            Collections.singletonMap(fakeOldSnapshot, SnapshotsService.SHARD_GEN_IN_REPO_DATA_VERSION.minimumCompatibilityVersion())
+        );
+        final BytesReference serialized = BytesReference.bytes(
+            modifiedRepositoryData.snapshotsToXContent(XContentFactory.jsonBuilder(), SnapshotsService.OLD_SNAPSHOT_FORMAT)
+        );
+        PlainActionFuture.get(f -> repository.threadPool().generic().execute(ActionRunnable.run(f, () -> {
+            try (InputStream stream = serialized.streamInput()) {
+                repository.blobStore()
+                    .blobContainer(repository.basePath())
+                    .writeBlobAtomic(
+                        BlobStoreRepository.INDEX_FILE_PREFIX + modifiedRepositoryData.getGenId(),
+                        stream,
+                        serialized.length(),
+                        true
+                    );
+            }
+        })));
+
+        final String newSnapshotName = "snapshot-new";
+        final long beforeThrottledSnapshot = repository.threadPool().relativeTimeInNanos();
+        client().admin().cluster().prepareCreateSnapshot(repoName, newSnapshotName).setWaitForCompletion(true).setIndices().get();
+        assertThat(repository.threadPool().relativeTimeInNanos() - beforeThrottledSnapshot, greaterThan(TEST_COOLDOWN_PERIOD.getNanos()));
+
+        final long beforeThrottledDelete = repository.threadPool().relativeTimeInNanos();
+        client().admin().cluster().prepareDeleteSnapshot(repoName, newSnapshotName).get();
+        assertThat(repository.threadPool().relativeTimeInNanos() - beforeThrottledDelete, greaterThan(TEST_COOLDOWN_PERIOD.getNanos()));
+
+        final long beforeFastDelete = repository.threadPool().relativeTimeInNanos();
+        client().admin().cluster().prepareDeleteSnapshot(repoName, fakeOldSnapshot.getName()).get();
+        assertThat(repository.threadPool().relativeTimeInNanos() - beforeFastDelete, lessThan(TEST_COOLDOWN_PERIOD.getNanos()));
+    }
+
     /**
      * S3RepositoryPlugin that allows to disable chunked encoding and to set a low threshold between single upload and multipart upload.
      */

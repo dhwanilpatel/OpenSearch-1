@@ -220,8 +220,8 @@ public class InboundDecoder implements Releasable {
         // handshake. This looks odd but it's required to establish the connection correctly we check for real compatibility
         // once the connection is established
         final Version compatibilityVersion = isHandshake ? currentVersion.minimumCompatibilityVersion() : currentVersion;
-        boolean v3x = currentVersion.onOrAfter(Version.V_3_0_0) && currentVersion.before(V_4_0_0);
-        if ((v3x && remoteVersion.equals(Version.fromId(7099999)) == false) && remoteVersion.isCompatible(compatibilityVersion) == false) {
+        if ((currentVersion.onOrAfter(Version.V_2_0_0) && remoteVersion.equals(Version.fromId(6079999))) == false
+            && remoteVersion.isCompatible(compatibilityVersion) == false) {
             final Version minCompatibilityVersion = isHandshake ? compatibilityVersion : compatibilityVersion.minimumCompatibilityVersion();
             String msg = "Received " + (isHandshake ? "handshake " : "") + "message from unsupported version: [";
             return new IllegalStateException(msg + remoteVersion + "] minimal compatible version is: [" + minCompatibilityVersion + "]");

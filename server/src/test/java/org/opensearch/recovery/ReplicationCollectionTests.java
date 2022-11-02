@@ -39,7 +39,6 @@ import org.opensearch.index.shard.IndexShard;
 import org.opensearch.index.shard.ShardId;
 import org.opensearch.index.store.Store;
 import org.opensearch.indices.replication.common.ReplicationCollection;
-import org.opensearch.indices.replication.common.ReplicationFailedException;
 import org.opensearch.indices.replication.common.ReplicationListener;
 import org.opensearch.indices.replication.common.ReplicationState;
 import org.opensearch.indices.recovery.RecoveryState;
@@ -60,7 +59,7 @@ public class ReplicationCollectionTests extends OpenSearchIndexLevelReplicationT
         }
 
         @Override
-        public void onFailure(ReplicationState state, ReplicationFailedException e, boolean sendShardFailure) {
+        public void onFailure(ReplicationState state, OpenSearchException e, boolean sendShardFailure) {
 
         }
     };
@@ -94,7 +93,7 @@ public class ReplicationCollectionTests extends OpenSearchIndexLevelReplicationT
                 }
 
                 @Override
-                public void onFailure(ReplicationState state, ReplicationFailedException e, boolean sendShardFailure) {
+                public void onFailure(ReplicationState state, OpenSearchException e, boolean sendShardFailure) {
                     failed.set(true);
                     latch.countDown();
                 }

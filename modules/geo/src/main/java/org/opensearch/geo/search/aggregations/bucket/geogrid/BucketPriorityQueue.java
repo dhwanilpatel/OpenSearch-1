@@ -38,7 +38,7 @@ import org.apache.lucene.util.PriorityQueue;
  *
  * @opensearch.internal
  */
-class BucketPriorityQueue<B extends BaseGeoGridBucket> extends PriorityQueue<B> {
+class BucketPriorityQueue<B extends InternalGeoGridBucket> extends PriorityQueue<B> {
 
     BucketPriorityQueue(int size) {
         super(size);

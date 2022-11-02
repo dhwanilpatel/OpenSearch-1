@@ -50,7 +50,7 @@ import static java.util.Collections.emptyMap;
  *
  * @opensearch.internal
  */
-public abstract class PipelineAggregator {
+public abstract class PipelineAggregator implements NamedWriteable {
     /**
      * Parse the {@link PipelineAggregationBuilder} from a {@link XContentParser}.
      *

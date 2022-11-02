@@ -23,10 +23,11 @@ import org.opensearch.index.seqno.LocalCheckpointTracker;
 import org.opensearch.index.seqno.SeqNoStats;
 import org.opensearch.index.seqno.SequenceNumbers;
 import org.opensearch.index.translog.Translog;
-import org.opensearch.index.translog.TranslogManager;
-import org.opensearch.index.translog.WriteOnlyTranslogManager;
 import org.opensearch.index.translog.TranslogDeletionPolicy;
 import org.opensearch.index.translog.TranslogException;
+import org.opensearch.index.translog.TranslogManager;
+import org.opensearch.index.translog.TranslogStats;
+import org.opensearch.index.translog.WriteOnlyTranslogManager;
 import org.opensearch.index.translog.listener.TranslogEventListener;
 import org.opensearch.search.suggest.completion.CompletionStats;
 
@@ -38,6 +39,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 import java.util.function.BiFunction;
+import java.util.stream.Stream;
 
 /**
  * This is an {@link Engine} implementation intended for replica shards when Segment Replication
@@ -46,7 +48,7 @@ import java.util.function.BiFunction;
  *
  * @opensearch.internal
  */
-public class NRTReplicationEngine extends Engine {
+public class NRTReplicationEngine extends Engine implements LifecycleAware {
 
     private volatile SegmentInfos lastCommittedSegmentInfos;
     private final NRTReplicationReaderManager readerManager;
@@ -105,8 +107,7 @@ public class NRTReplicationEngine extends Engine {
                         }
                     }
                 },
-                this,
-                engineConfig.getTranslogFactory()
+                this
             );
             this.translogManager = translogManagerRef;
         } catch (IOException e) {
@@ -115,7 +116,6 @@ public class NRTReplicationEngine extends Engine {
         }
     }
 
-    @Override
     public TranslogManager translogManager() {
         return translogManager;
     }
@@ -182,6 +182,11 @@ public class NRTReplicationEngine extends Engine {
     }
 
     @Override
+    public void trimOperationsFromTranslog(long belowTerm, long aboveSeqNo) throws EngineException {
+        translogManager.trimOperationsFromTranslog(belowTerm, aboveSeqNo);
+    }
+
+    @Override
     public IndexResult index(Index index) throws IOException {
         ensureOpen();
         IndexResult indexResult = new IndexResult(index.version(), index.primaryTerm(), index.seqNo(), false);
@@ -240,6 +245,21 @@ public class NRTReplicationEngine extends Engine {
     }
 
     @Override
+    public boolean isTranslogSyncNeeded() {
+        return translogManager.getTranslog().syncNeeded();
+    }
+
+    @Override
+    public boolean ensureTranslogSynced(Stream<Translog.Location> locations) throws IOException {
+        return translogManager.ensureTranslogSynced(locations);
+    }
+
+    @Override
+    public void syncTranslog() throws IOException {
+        translogManager.syncTranslog();
+    }
+
+    @Override
     public Closeable acquireHistoryRetentionLock() {
         throw new UnsupportedOperationException("Not implemented");
     }
@@ -253,6 +273,13 @@ public class NRTReplicationEngine extends Engine {
         boolean accurateCount
     ) throws IOException {
         throw new UnsupportedOperationException("Not implemented");
+    }
+
+    @Deprecated
+    @Override
+    public Translog.Snapshot newChangesSnapshotFromTranslogFile(String source, long fromSeqNo, long toSeqNo, boolean requiredFullRange)
+        throws IOException {
+        return getTranslog().newSnapshot(fromSeqNo, toSeqNo, requiredFullRange);
     }
 
     @Override
@@ -271,11 +298,20 @@ public class NRTReplicationEngine extends Engine {
     }
 
     @Override
+    public TranslogStats getTranslogStats() {
+        return translogManager.getTranslog().stats();
+    }
+
+    @Override
+    public Translog.Location getTranslogLastWriteLocation() {
+        return translogManager.getTranslog().getLastWriteLocation();
+    }
+
+    @Override
     public long getPersistedLocalCheckpoint() {
         return localCheckpointTracker.getPersistedCheckpoint();
     }
 
-    @Override
     public long getProcessedLocalCheckpoint() {
         return localCheckpointTracker.getProcessedCheckpoint();
     }
@@ -318,6 +354,21 @@ public class NRTReplicationEngine extends Engine {
 
     @Override
     public void flush(boolean force, boolean waitIfOngoing) throws EngineException {}
+
+    @Override
+    public void trimUnreferencedTranslogFiles() throws EngineException {
+        translogManager.trimUnreferencedTranslogFiles();
+    }
+
+    @Override
+    public boolean shouldRollTranslogGeneration() {
+        return translogManager.getTranslog().shouldRollGeneration();
+    }
+
+    @Override
+    public void rollTranslogGeneration() throws EngineException {
+        translogManager.rollTranslogGeneration();
+    }
 
     @Override
     public void forceMerge(
@@ -381,8 +432,23 @@ public class NRTReplicationEngine extends Engine {
     public void deactivateThrottling() {}
 
     @Override
+    public int restoreLocalHistoryFromTranslog(TranslogRecoveryRunner translogRecoveryRunner) throws IOException {
+        return 0;
+    }
+
+    @Override
     public int fillSeqNoGaps(long primaryTerm) throws IOException {
         return 0;
+    }
+
+    @Override
+    public Engine recoverFromTranslog(TranslogRecoveryRunner translogRecoveryRunner, long recoverUpToSeqNo) throws IOException {
+        throw new UnsupportedOperationException("Read only replicas do not have an IndexWriter and cannot recover from a translog.");
+    }
+
+    @Override
+    public void skipTranslogRecovery() {
+        // Do nothing.
     }
 
     @Override
@@ -398,6 +464,10 @@ public class NRTReplicationEngine extends Engine {
 
     @Override
     public void advanceMaxSeqNoOfUpdatesOrDeletes(long maxSeqNoOfUpdatesOnPrimary) {}
+
+    public Translog getTranslog() {
+        return translogManager.getTranslog();
+    }
 
     @Override
     public void onSettingsChanged(TimeValue translogRetentionAge, ByteSizeValue translogRetentionSize, long softDeletesRetentionOps) {

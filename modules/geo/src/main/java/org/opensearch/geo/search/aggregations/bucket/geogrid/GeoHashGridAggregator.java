@@ -64,8 +64,13 @@ class GeoHashGridAggregator extends GeoGridAggregator<GeoHashGrid> {
     }
 
     @Override
-    protected GeoHashGrid buildAggregation(String name, int requiredSize, List<BaseGeoGridBucket> buckets, Map<String, Object> metadata) {
-        return new GeoHashGrid(name, requiredSize, buckets, metadata);
+    protected InternalGeoHashGrid buildAggregation(
+        String name,
+        int requiredSize,
+        List<InternalGeoGridBucket> buckets,
+        Map<String, Object> metadata
+    ) {
+        return new InternalGeoHashGrid(name, requiredSize, buckets, metadata);
     }
 
     @Override
@@ -74,7 +79,7 @@ class GeoHashGridAggregator extends GeoGridAggregator<GeoHashGrid> {
     }
 
     @Override
-    protected BaseGeoGridBucket newEmptyBucket() {
+    protected InternalGeoGridBucket newEmptyBucket() {
         return new InternalGeoHashGridBucket(0, 0, null);
     }
 }

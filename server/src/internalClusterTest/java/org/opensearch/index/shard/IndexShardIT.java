@@ -699,7 +699,6 @@ public class IndexShardIT extends OpenSearchSingleNodeTestCase {
             () -> {},
             RetentionLeaseSyncer.EMPTY,
             cbs,
-            new InternalTranslogFactory(),
             SegmentReplicationCheckpointPublisher.EMPTY,
             null
         );

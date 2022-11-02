@@ -333,6 +333,9 @@ public abstract class BlobStoreRepository extends AbstractLifecycleComponent imp
      * <ul>
      *     <li>All repositories that are read-only, i.e. for which {@link #isReadOnly()} returns {@code true} because there are no
      *     guarantees that another cluster is not writing to the repository at the same time</li>
+     *     <li>The node finds itself in a mixed-version cluster containing nodes older than
+     *     {@link RepositoryMetadata#REPO_GEN_IN_CS_VERSION} where the cluster-manager node does not update the value of
+     *     {@link RepositoryMetadata#generation()} when writing a new {@code index-N} blob</li>
      *     <li>The value of {@link RepositoryMetadata#generation()} for this repository is {@link RepositoryData#UNKNOWN_REPO_GEN}
      *     indicating that no consistent repository generation is tracked in the cluster state yet.</li>
      *     <li>The {@link #uncleanStart} flag is set to {@code true}</li>

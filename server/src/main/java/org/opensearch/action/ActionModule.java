@@ -694,19 +694,14 @@ public class ActionModule extends AbstractModule {
         actions.register(DeleteDanglingIndexAction.INSTANCE, TransportDeleteDanglingIndexAction.class);
         actions.register(FindDanglingIndexAction.INSTANCE, TransportFindDanglingIndexAction.class);
 
+        // Remote Store
+        actions.register(RestoreRemoteStoreAction.INSTANCE, TransportRestoreRemoteStoreAction.class);
+
         // point in time actions
         actions.register(CreatePitAction.INSTANCE, TransportCreatePitAction.class);
         actions.register(DeletePitAction.INSTANCE, TransportDeletePitAction.class);
         actions.register(PitSegmentsAction.INSTANCE, TransportPitSegmentsAction.class);
         actions.register(GetAllPitsAction.INSTANCE, TransportGetAllPitsAction.class);
-
-        // Remote Store
-        actions.register(RestoreRemoteStoreAction.INSTANCE, TransportRestoreRemoteStoreAction.class);
-
-        // Decommission actions
-        actions.register(DecommissionAction.INSTANCE, TransportDecommissionAction.class);
-        actions.register(GetDecommissionStateAction.INSTANCE, TransportGetDecommissionStateAction.class);
-        actions.register(DeleteDecommissionStateAction.INSTANCE, TransportDeleteDecommissionStateAction.class);
 
         return unmodifiableMap(actions.getRegistry());
     }
@@ -889,7 +884,6 @@ public class ActionModule extends AbstractModule {
         registerHandler.accept(new RestDeletePitAction());
         registerHandler.accept(new RestGetAllPitsAction(nodesInCluster));
         registerHandler.accept(new RestPitSegmentsAction(nodesInCluster));
-        registerHandler.accept(new RestDeleteDecommissionStateAction());
 
         for (ActionPlugin plugin : actionPlugins) {
             for (RestHandler handler : plugin.getRestHandlers(
@@ -905,8 +899,6 @@ public class ActionModule extends AbstractModule {
             }
         }
         registerHandler.accept(new RestCatAction(catActions));
-        registerHandler.accept(new RestDecommissionAction());
-        registerHandler.accept(new RestGetDecommissionStateAction());
 
         // Remote Store APIs
         if (FeatureFlags.isEnabled(FeatureFlags.REMOTE_STORE)) {

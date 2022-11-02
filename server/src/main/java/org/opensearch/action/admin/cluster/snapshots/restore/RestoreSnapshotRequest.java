@@ -32,6 +32,7 @@
 
 package org.opensearch.action.admin.cluster.snapshots.restore;
 
+import org.opensearch.LegacyESVersion;
 import org.opensearch.Version;
 import org.opensearch.action.ActionRequestValidationException;
 import org.opensearch.action.support.IndicesOptions;
@@ -149,6 +150,9 @@ public class RestoreSnapshotRequest extends ClusterManagerNodeRequest<RestoreSna
         if (FeatureFlags.isEnabled(FeatureFlags.SEARCHABLE_SNAPSHOT) && in.getVersion().onOrAfter(Version.V_2_4_0)) {
             storageType = in.readEnum(StorageType.class);
         }
+        if (FeatureFlags.isEnabled(FeatureFlags.SEARCHABLE_SNAPSHOT) && in.getVersion().onOrAfter(Version.V_2_4_0)) {
+            storageType = in.readEnum(StorageType.class);
+        }
     }
 
     @Override
@@ -167,6 +171,9 @@ public class RestoreSnapshotRequest extends ClusterManagerNodeRequest<RestoreSna
         writeSettingsToStream(indexSettings, out);
         out.writeStringArray(ignoreIndexSettings);
         out.writeOptionalString(snapshotUuid);
+        if (FeatureFlags.isEnabled(FeatureFlags.SEARCHABLE_SNAPSHOT) && out.getVersion().onOrAfter(Version.V_2_4_0)) {
+            out.writeEnum(storageType);
+        }
         if (FeatureFlags.isEnabled(FeatureFlags.SEARCHABLE_SNAPSHOT) && out.getVersion().onOrAfter(Version.V_2_4_0)) {
             out.writeEnum(storageType);
         }

@@ -30,26 +30,33 @@
  * GitHub history for details.
  */
 
-package org.opensearch.example.painlessallowlist;
+package org.opensearch.search.aggregations.bucket;
+
+import org.apache.lucene.index.DocValues;
+import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.NumericDocValues;
+import org.opensearch.index.mapper.DocCountFieldMapper;
+
+import java.io.IOException;
 
 /**
- * An example of a class with static methods to be allowlisted for use by painless scripts
- *
- * The method below is allowlisted for use in search scripts.
- * See <a href="file:example_allowlist.txt">example_allowlist.txt</a>.
+ * An implementation of a doc_count provider that reads the value
+ * of the _doc_count field in the document. If a document does not have a
+ * _doc_count field the implementation will return 1 as the default value.
  */
-public class ExampleStaticMethodClass {
+public class DocCountProvider {
 
-    private ExampleStaticMethodClass() {}
+    private NumericDocValues docCountValues;
 
-    /**
-     * An example static method to add integers.
-     *
-     * @param x A number to add.
-     * @param y Another number to add.
-     * @return The sum of x and y.
-     */
-    public static int exampleAddInts(int x, int y) {
-        return x + y;
+    public long getDocCount(int doc) throws IOException {
+        if (docCountValues != null && docCountValues.advanceExact(doc)) {
+            return docCountValues.longValue();
+        } else {
+            return 1L;
+        }
+    }
+
+    public void setLeafReaderContext(LeafReaderContext ctx) throws IOException {
+        docCountValues = DocValues.getNumeric(ctx.reader(), DocCountFieldMapper.NAME);
     }
 }

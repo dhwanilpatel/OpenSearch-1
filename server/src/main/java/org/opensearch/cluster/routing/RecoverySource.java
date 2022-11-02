@@ -287,6 +287,11 @@ public abstract class RecoverySource implements Writeable, ToXContentObject {
             } else {
                 isSearchableSnapshot = false;
             }
+            if (FeatureFlags.isEnabled(FeatureFlags.SEARCHABLE_SNAPSHOT) && in.getVersion().onOrAfter(Version.V_2_4_0)) {
+                isSearchableSnapshot = in.readBoolean();
+            } else {
+                isSearchableSnapshot = false;
+            }
         }
 
         public String restoreUUID() {
@@ -321,6 +326,9 @@ public abstract class RecoverySource implements Writeable, ToXContentObject {
             snapshot.writeTo(out);
             Version.writeVersion(version, out);
             index.writeTo(out);
+            if (FeatureFlags.isEnabled(FeatureFlags.SEARCHABLE_SNAPSHOT) && out.getVersion().onOrAfter(Version.V_2_4_0)) {
+                out.writeBoolean(isSearchableSnapshot);
+            }
             if (FeatureFlags.isEnabled(FeatureFlags.SEARCHABLE_SNAPSHOT) && out.getVersion().onOrAfter(Version.V_2_4_0)) {
                 out.writeBoolean(isSearchableSnapshot);
             }
@@ -390,7 +398,11 @@ public abstract class RecoverySource implements Writeable, ToXContentObject {
         RemoteStoreRecoverySource(StreamInput in) throws IOException {
             restoreUUID = in.readString();
             version = Version.readVersion(in);
-            index = new IndexId(in);
+            if (in.getVersion().onOrAfter(LegacyESVersion.V_7_7_0)) {
+                index = new IndexId(in);
+            } else {
+                index = new IndexId(in.readString(), IndexMetadata.INDEX_UUID_NA_VALUE);
+            }
         }
 
         public String restoreUUID() {
@@ -415,7 +427,11 @@ public abstract class RecoverySource implements Writeable, ToXContentObject {
         protected void writeAdditionalFields(StreamOutput out) throws IOException {
             out.writeString(restoreUUID);
             Version.writeVersion(version, out);
-            index.writeTo(out);
+            if (out.getVersion().onOrAfter(LegacyESVersion.V_7_7_0)) {
+                index.writeTo(out);
+            } else {
+                out.writeString(index.getName());
+            }
         }
 
         @Override

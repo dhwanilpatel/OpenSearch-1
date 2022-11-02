@@ -350,4 +350,5 @@ public class LocalCheckpointTrackerTests extends OpenSearchTestCase {
         assertThat(tracker.getProcessedCheckpoint(), equalTo(0L));
         assertThat(tracker.hasProcessed(0L), equalTo(true));
     }
+
 }

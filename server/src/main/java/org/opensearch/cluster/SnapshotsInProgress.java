@@ -289,11 +289,33 @@ public class SnapshotsInProgress extends AbstractNamedDiffable<Custom> implement
             shards = in.readImmutableMap(ShardId::new, ShardSnapshotStatus::readFrom);
             repositoryStateId = in.readLong();
             failure = in.readOptionalString();
-            userMetadata = in.readMap();
-            version = Version.readVersion(in);
-            dataStreams = in.readStringList();
-            source = in.readOptionalWriteable(SnapshotId::new);
-            clones = in.readImmutableMap(RepositoryShardId::new, ShardSnapshotStatus::readFrom);
+            if (in.getVersion().onOrAfter(METADATA_FIELD_INTRODUCED)) {
+                userMetadata = in.readMap();
+            } else {
+                userMetadata = null;
+            }
+            if (in.getVersion().onOrAfter(VERSION_IN_SNAPSHOT_VERSION)) {
+                version = Version.readVersion(in);
+            } else if (in.getVersion().onOrAfter(SnapshotsService.SHARD_GEN_IN_REPO_DATA_VERSION)) {
+                // If an older cluster-manager informs us that shard generations are supported
+                // we use the minimum shard generation compatible version.
+                // If shard generations are not supported yet we use a placeholder for a version that does not use shard generations.
+                version = in.readBoolean() ? SnapshotsService.SHARD_GEN_IN_REPO_DATA_VERSION : SnapshotsService.OLD_SNAPSHOT_FORMAT;
+            } else {
+                version = SnapshotsService.OLD_SNAPSHOT_FORMAT;
+            }
+            if (in.getVersion().onOrAfter(DATA_STREAMS_IN_SNAPSHOT)) {
+                dataStreams = in.readStringList();
+            } else {
+                dataStreams = Collections.emptyList();
+            }
+            if (in.getVersion().onOrAfter(SnapshotsService.CLONE_SNAPSHOT_VERSION)) {
+                source = in.readOptionalWriteable(SnapshotId::new);
+                clones = in.readImmutableMap(RepositoryShardId::new, ShardSnapshotStatus::readFrom);
+            } else {
+                source = null;
+                clones = ImmutableOpenMap.of();
+            }
         }
 
         private static boolean assertShardsConsistent(

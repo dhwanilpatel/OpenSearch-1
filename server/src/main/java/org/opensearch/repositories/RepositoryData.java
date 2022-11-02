@@ -591,7 +591,15 @@ public final class RepositoryData {
             builder.endObject();
         }
         builder.endObject();
-        builder.field(INDEX_METADATA_IDENTIFIERS, indexMetaDataGenerations.identifiers);
+        if (shouldWriteIndexGens) {
+            if (repoMetaVersion.before(Version.V_2_4_0)) {
+                builder.field(MIN_VERSION, SnapshotsService.INDEX_GEN_IN_REPO_DATA_VERSION.toString());
+            }
+            builder.field(INDEX_METADATA_IDENTIFIERS, indexMetaDataGenerations.identifiers);
+        } else if (shouldWriteShardGens && repoMetaVersion.before(Version.V_2_4_0)) {
+            // Add min version field to make it impossible for older OpenSearch versions to deserialize this object
+            builder.field(MIN_VERSION, SnapshotsService.SHARD_GEN_IN_REPO_DATA_VERSION.toString());
+        }
         builder.endObject();
         return builder;
     }
@@ -627,10 +635,14 @@ public final class RepositoryData {
                     XContentParserUtils.ensureExpectedToken(XContentParser.Token.START_OBJECT, parser.nextToken(), parser);
                     indexMetaIdentifiers = parser.mapStrings();
                     break;
-                case MIN_VERSION:
-                    // ignore min_version
-                    // todo: remove in next version
-                    parser.nextToken();
+                case MIN_VERSION: // todo: remove in 3.0
+                    if (Version.CURRENT.major < 3) {
+                        XContentParserUtils.ensureExpectedToken(XContentParser.Token.VALUE_STRING, parser.nextToken(), parser);
+                        final Version version = Version.fromString(parser.text());
+                        assert SnapshotsService.useShardGenerations(version);
+                    } else {
+                        throw new OpenSearchParseException("Field [{}] was removed in version 2.4.0 and no longer supported.", MIN_VERSION);
+                    }
                     break;
                 default:
                     XContentParserUtils.throwUnknownField(field, parser.getTokenLocation());

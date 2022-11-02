@@ -809,7 +809,7 @@ public class RequestConvertersTests extends OpenSearchTestCase {
 
         UpdateRequest parsedUpdateRequest = new UpdateRequest();
 
-        XContentType entityContentType = XContentType.fromMediaType(entity.getContentType());
+        XContentType entityContentType = XContentType.fromMediaType(entity.getContentType().getValue());
         try (XContentParser parser = createParser(entityContentType.xContent(), entity.getContent())) {
             parsedUpdateRequest.fromXContent(parser);
         }
@@ -1338,6 +1338,47 @@ public class RequestConvertersTests extends OpenSearchTestCase {
         assertEquals(endpoint, request.getEndpoint());
         assertToXContentBody(deletePitRequest, request.getEntity());
         assertEquals(REQUEST_BODY_CONTENT_TYPE.mediaTypeWithoutParameters(), request.getEntity().getContentType());
+    }
+
+    public void testDeleteAllPits() {
+        Request request = RequestConverters.deleteAllPits();
+        String endpoint = "/_search/point_in_time/_all";
+        assertEquals(HttpDelete.METHOD_NAME, request.getMethod());
+        assertEquals(endpoint, request.getEndpoint());
+    }
+
+    public void testCreatePit() throws IOException {
+        String[] indices = randomIndicesNames(0, 5);
+        Map<String, String> expectedParams = new HashMap<>();
+        expectedParams.put("keep_alive", "1d");
+        expectedParams.put("allow_partial_pit_creation", "true");
+        CreatePitRequest createPitRequest = new CreatePitRequest(new TimeValue(1, TimeUnit.DAYS), true, indices);
+        setRandomIndicesOptions(createPitRequest::indicesOptions, createPitRequest::indicesOptions, expectedParams);
+        Request request = RequestConverters.createPit(createPitRequest);
+        StringJoiner endpoint = new StringJoiner("/", "/", "");
+        String index = String.join(",", indices);
+        if (Strings.hasLength(index)) {
+            endpoint.add(index);
+        }
+        endpoint.add("_search/point_in_time");
+        assertEquals(HttpPost.METHOD_NAME, request.getMethod());
+        assertEquals(endpoint.toString(), request.getEndpoint());
+        assertEquals(expectedParams, request.getParameters());
+        assertToXContentBody(createPitRequest, request.getEntity());
+        assertEquals(REQUEST_BODY_CONTENT_TYPE.mediaTypeWithoutParameters(), request.getEntity().getContentType().getValue());
+    }
+
+    public void testDeletePit() throws IOException {
+        List<String> pitIdsList = new ArrayList<>();
+        pitIdsList.add("pitId1");
+        pitIdsList.add("pitId2");
+        DeletePitRequest deletePitRequest = new DeletePitRequest(pitIdsList);
+        Request request = RequestConverters.deletePit(deletePitRequest);
+        String endpoint = "/_search/point_in_time";
+        assertEquals(HttpDelete.METHOD_NAME, request.getMethod());
+        assertEquals(endpoint, request.getEndpoint());
+        assertToXContentBody(deletePitRequest, request.getEntity());
+        assertEquals(REQUEST_BODY_CONTENT_TYPE.mediaTypeWithoutParameters(), request.getEntity().getContentType().getValue());
     }
 
     public void testDeleteAllPits() {
@@ -2149,8 +2190,8 @@ public class RequestConvertersTests extends OpenSearchTestCase {
         }
     }
 
-    static void setRandomClusterManagerTimeout(ClusterManagerNodeRequest<?> request, Map<String, String> expectedParams) {
-        setRandomClusterManagerTimeout(request::clusterManagerNodeTimeout, expectedParams);
+    static void setRandomMasterTimeout(ClusterManagerNodeRequest<?> request, Map<String, String> expectedParams) {
+        setRandomMasterTimeout(request::clusterManagerNodeTimeout, expectedParams);
     }
 
     static void setRandomClusterManagerTimeout(TimedRequest request, Map<String, String> expectedParams) {
@@ -2166,7 +2207,7 @@ public class RequestConvertersTests extends OpenSearchTestCase {
             setter.accept(clusterManagerTimeout);
             expectedParams.put("cluster_manager_timeout", clusterManagerTimeout);
         } else {
-            expectedParams.put("cluster_manager_timeout", ClusterManagerNodeRequest.DEFAULT_CLUSTER_MANAGER_NODE_TIMEOUT.getStringRep());
+            expectedParams.put("master_timeout", ClusterManagerNodeRequest.DEFAULT_CLUSTER_MANAGER_NODE_TIMEOUT.getStringRep());
         }
     }
 

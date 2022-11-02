@@ -447,7 +447,7 @@ public class SnapshotShardsService extends AbstractLifecycleComponent implements
                                 // but we think the shard is done - we need to make new cluster-manager know that the shard is done
                                 logger.debug(
                                     "[{}] new cluster-manager thinks the shard [{}] is not completed but the shard is done locally, "
-                                        + "updating status on the master",
+                                        + "updating status on the cluster-manager",
                                     snapshot.snapshot(),
                                     shardId
                                 );
@@ -457,7 +457,7 @@ public class SnapshotShardsService extends AbstractLifecycleComponent implements
                                 // but we think the shard failed - we need to make new cluster-manager know that the shard failed
                                 logger.debug(
                                     "[{}] new cluster-manager thinks the shard [{}] is not completed but the shard failed locally, "
-                                        + "updating status on master",
+                                        + "updating status on cluster-manager",
                                     snapshot.snapshot(),
                                     shardId
                                 );

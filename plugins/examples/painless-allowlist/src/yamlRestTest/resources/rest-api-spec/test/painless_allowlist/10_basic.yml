@@ -13,4 +13,4 @@
     - do:
         nodes.info: {}
 
-    - contains:  { nodes.$cluster_manager.plugins: { name: painless-allowlist } }
+    - contains:  { nodes.$cluster_manager.plugins: { name: painless-whitelist } }

@@ -37,6 +37,7 @@ import org.apache.lucene.index.IndexFormatTooNewException;
 import org.apache.lucene.index.IndexFormatTooOldException;
 import org.opensearch.Assertions;
 import org.opensearch.ExceptionsHelper;
+import org.opensearch.OpenSearchException;
 import org.opensearch.action.ActionListener;
 import org.opensearch.action.admin.indices.flush.FlushRequest;
 import org.opensearch.cluster.node.DiscoveryNode;
@@ -56,11 +57,10 @@ import org.opensearch.index.shard.IndexShardState;
 import org.opensearch.index.store.Store;
 import org.opensearch.index.store.StoreFileMetadata;
 import org.opensearch.index.translog.Translog;
-import org.opensearch.indices.replication.common.ReplicationCollection;
-import org.opensearch.indices.replication.common.ReplicationFailedException;
-import org.opensearch.indices.replication.common.ReplicationListener;
 import org.opensearch.indices.replication.common.ReplicationLuceneIndex;
 import org.opensearch.indices.replication.common.ReplicationTarget;
+import org.opensearch.indices.replication.common.ReplicationListener;
+import org.opensearch.indices.replication.common.ReplicationCollection;
 
 import java.io.IOException;
 import java.nio.channels.FileChannel;
@@ -136,7 +136,7 @@ public class RecoveryTarget extends ReplicationTarget implements RecoveryTargetH
     }
 
     @Override
-    public void notifyListener(ReplicationFailedException e, boolean sendShardFailure) {
+    public void notifyListener(OpenSearchException e, boolean sendShardFailure) {
         listener.onFailure(state(), new RecoveryFailedException(state(), e.getMessage(), e), sendShardFailure);
     }
 
@@ -178,6 +178,51 @@ public class RecoveryTarget extends ReplicationTarget implements RecoveryTargetH
         return false;
     }
 
+    /**
+     * cancel the recovery. calling this method will clean temporary files and release the store
+     * unless this object is in use (in which case it will be cleaned once all ongoing users call
+     * {@link #decRef()}
+     * <p>
+     * if {@link #cancellableThreads()} was used, the threads will be interrupted.
+     */
+    public void cancel(String reason) {
+        if (finished.compareAndSet(false, true)) {
+            try {
+                logger.debug("recovery canceled (reason: [{}])", reason);
+                cancellableThreads.cancel(reason);
+            } finally {
+                // release the initial reference. recovery files will be cleaned as soon as ref count goes to zero, potentially now
+                decRef();
+            }
+        }
+    }
+
+    /**
+     * fail the recovery and call listener
+     *
+     * @param e                exception that encapsulating the failure
+     * @param sendShardFailure indicates whether to notify the cluster-manager of the shard failure
+     */
+    public void fail(RecoveryFailedException e, boolean sendShardFailure) {
+        super.fail(e, sendShardFailure);
+    }
+
+    /** mark the current recovery as done */
+    public void markAsDone() {
+        if (finished.compareAndSet(false, true)) {
+            assert multiFileWriter.tempFileNames.isEmpty() : "not all temporary files are renamed";
+            try {
+                // this might still throw an exception ie. if the shard is CLOSED due to some other event.
+                // it's safer to decrement the reference in a try finally here.
+                indexShard.postRecovery("peer recovery done");
+            } finally {
+                // release the initial reference. recovery files will be cleaned as soon as ref count goes to zero, potentially now
+                decRef();
+            }
+            listener.onDone(state());
+        }
+    }
+
     @Override
     protected void closeInternal() {
         try {
@@ -202,6 +247,8 @@ public class RecoveryTarget extends ReplicationTarget implements RecoveryTargetH
     @Override
     protected void onDone() {
         assert multiFileWriter.tempFileNames.isEmpty() : "not all temporary files are renamed";
+        // this might still throw an exception ie. if the shard is CLOSED due to some other event.
+        // it's safer to decrement the reference in a try finally here.
         indexShard.postRecovery("peer recovery done");
     }
 

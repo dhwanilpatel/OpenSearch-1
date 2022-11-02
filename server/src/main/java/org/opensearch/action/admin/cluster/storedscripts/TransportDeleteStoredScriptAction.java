@@ -100,7 +100,7 @@ public class TransportDeleteStoredScriptAction extends TransportClusterManagerNo
         ClusterState state,
         ActionListener<AcknowledgedResponse> listener
     ) throws Exception {
-        scriptService.deleteStoredScript(clusterService, request, deleteScriptTaskKey, listener);
+        scriptService.deleteStoredScript(clusterService, request, listener);
     }
 
     @Override

@@ -56,7 +56,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-public class SystemdModulePluginTests extends OpenSearchTestCase {
+public class SystemdPluginTests extends OpenSearchTestCase {
     final Scheduler.Cancellable extender = mock(Scheduler.Cancellable.class);
     final ThreadPool threadPool = mock(ThreadPool.class);
 
@@ -67,14 +67,14 @@ public class SystemdModulePluginTests extends OpenSearchTestCase {
     }
 
     public void testIsImplicitlyNotEnabled() {
-        final SystemdModulePlugin plugin = new SystemdModulePlugin(null);
+        final SystemdPlugin plugin = new SystemdPlugin(null);
         plugin.createComponents(null, null, threadPool, null, null, null, null, null, null, null, null);
         assertFalse(plugin.isEnabled());
         assertNull(plugin.extender());
     }
 
     public void testIsExplicitlyNotEnabled() {
-        final SystemdModulePlugin plugin = new SystemdModulePlugin(Boolean.FALSE.toString());
+        final SystemdPlugin plugin = new SystemdPlugin(Boolean.FALSE.toString());
         plugin.createComponents(null, null, threadPool, null, null, null, null, null, null, null, null);
         assertFalse(plugin.isEnabled());
         assertNull(plugin.extender());
@@ -85,7 +85,7 @@ public class SystemdModulePluginTests extends OpenSearchTestCase {
             s -> Boolean.TRUE.toString().equals(s) || Boolean.FALSE.toString().equals(s),
             () -> randomAlphaOfLength(4)
         );
-        final RuntimeException e = expectThrows(RuntimeException.class, () -> new SystemdModulePlugin(esSDNotify));
+        final RuntimeException e = expectThrows(RuntimeException.class, () -> new SystemdPlugin(esSDNotify));
         assertThat(e, hasToString(containsString("OPENSEARCH_SD_NOTIFY set to unexpected value [" + esSDNotify + "]")));
     }
 
@@ -156,7 +156,7 @@ public class SystemdModulePluginTests extends OpenSearchTestCase {
         final AtomicBoolean invoked = new AtomicBoolean();
         final AtomicInteger invokedUnsetEnvironment = new AtomicInteger();
         final AtomicReference<String> invokedState = new AtomicReference<>();
-        final SystemdModulePlugin plugin = new SystemdModulePlugin(esSDNotify) {
+        final SystemdPlugin plugin = new SystemdPlugin(esSDNotify) {
 
             @Override
             int sd_notify(final int unset_environment, final String state) {
