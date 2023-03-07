@@ -15,6 +15,7 @@ import org.opensearch.cluster.ClusterStateTaskExecutor;
 import org.opensearch.common.settings.ClusterSettings;
 import org.opensearch.common.settings.Setting;
 import org.opensearch.common.settings.Settings;
+import org.opensearch.common.unit.TimeValue;
 
 import java.util.HashSet;
 import java.util.List;
@@ -39,6 +40,20 @@ public class ClusterManagerTaskThrottler implements TaskBatcherListener {
 
     public static final Setting<Settings> THRESHOLD_SETTINGS = Setting.groupSetting(
         "cluster_manager.throttling.thresholds.",
+        Setting.Property.Dynamic,
+        Setting.Property.NodeScope
+    );
+
+    public static final Setting<TimeValue> BASE_DELAY_SETTINGS = Setting.timeSetting(
+        "cluster_manager.throttling.retry.base.delay",
+        TimeValue.timeValueMillis(200),
+        Setting.Property.Dynamic,
+        Setting.Property.NodeScope
+    );
+
+    public static final Setting<TimeValue> MAX_DELAY_SETTINGS = Setting.timeSetting(
+        "cluster_manager.throttling.retry.max.delay",
+        TimeValue.timeValueMillis(5000),
         Setting.Property.Dynamic,
         Setting.Property.NodeScope
     );

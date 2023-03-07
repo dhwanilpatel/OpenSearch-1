@@ -163,7 +163,12 @@ public abstract class TransportClusterManagerNodeAction<Request extends ClusterM
         if (task != null) {
             request.setParentTask(clusterService.localNode().getId(), task.getId());
         }
-        new AsyncSingleAction(task, request, listener).run();
+        ClusterState state = clusterService.state();
+        TimeValue baseDelay = state.getMetadata().settings()
+            .getAsTime("cluster_manager.throttling.retry.base.delay", TimeValue.timeValueMillis(200));
+        TimeValue maxDelay = state.getMetadata().settings()
+            .getAsTime("cluster_manager.throttling.retry.max.delay", TimeValue.timeValueMillis(5000));
+        new AsyncSingleAction(task, request, listener, baseDelay, maxDelay).run();
     }
 
     /**
@@ -178,17 +183,15 @@ public abstract class TransportClusterManagerNodeAction<Request extends ClusterM
         private ClusterStateObserver observer;
         private final long startTime;
         private final Task task;
-        private static final int BASE_DELAY_MILLIS = 10;
-        private static final int MAX_DELAY_MILLIS = 5000;
 
-        AsyncSingleAction(Task task, Request request, ActionListener<Response> listener) {
+        AsyncSingleAction(Task task, Request request, ActionListener<Response> listener, TimeValue baseDelay, TimeValue maxDelay) {
             super(
                 logger,
                 threadPool,
-                TimeValue.timeValueMillis(BASE_DELAY_MILLIS),
+                baseDelay,
                 request.clusterManagerNodeTimeout,
                 listener,
-                BackoffPolicy.exponentialEqualJitterBackoff(BASE_DELAY_MILLIS, MAX_DELAY_MILLIS),
+                BackoffPolicy.exponentialEqualJitterBackoff((int)baseDelay.millis(), (int)maxDelay.millis()),
                 ThreadPool.Names.SAME
             );
             this.task = task;
