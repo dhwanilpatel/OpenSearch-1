@@ -17,6 +17,7 @@ import org.opensearch.index.engine.exec.IndexingExecutionEngine;
 import org.opensearch.index.engine.exec.RefreshInput;
 import org.opensearch.index.engine.exec.RefreshResult;
 import org.opensearch.index.engine.exec.Writer;
+import org.opensearch.index.engine.exec.Merger;
 import org.opensearch.index.engine.exec.coord.Any;
 import org.opensearch.index.engine.exec.coord.CompositeDataFormatWriterPool;
 import org.opensearch.index.engine.exec.text.TextEngine;
@@ -82,6 +83,11 @@ public class CompositeIndexingExecutionEngine implements IndexingExecutionEngine
 
     public Writer<CompositeDataFormatWriter.CompositeDocumentInput> createCompositeWriter() {
         return dataFormatWriterPool.getAndLock();
+    }
+
+    @Override
+    public Merger getMerger() {
+        throw new UnsupportedOperationException();
     }
 
     @Override
