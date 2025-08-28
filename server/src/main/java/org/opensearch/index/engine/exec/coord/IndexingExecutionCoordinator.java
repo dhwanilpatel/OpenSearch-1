@@ -9,6 +9,9 @@
 package org.opensearch.index.engine.exec.coord;
 
 
+import org.apache.lucene.index.ConcurrentMergeScheduler;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.search.ReferenceManager;
 import org.opensearch.index.engine.Engine;
 import org.opensearch.index.engine.EngineException;
@@ -17,6 +20,7 @@ import org.opensearch.index.engine.exec.RefreshInput;
 import org.opensearch.index.engine.exec.WriteResult;
 import org.opensearch.index.engine.exec.composite.CompositeDataFormatWriter;
 import org.opensearch.index.engine.exec.composite.CompositeIndexingExecutionEngine;
+import org.opensearch.index.engine.exec.merge.OpensearchMultipleEngineMergeScheduler;
 import org.opensearch.index.mapper.KeywordFieldMapper;
 
 import java.io.IOException;
@@ -28,9 +32,16 @@ public class IndexingExecutionCoordinator {
     private final CompositeIndexingExecutionEngine engine;
     private List<ReferenceManager.RefreshListener> refreshListeners = new ArrayList<>();
     private CatalogSnapshot catalogSnapshot;
+    private IndexWriter writer; // common writer for checkpoint handling.
 
-    public IndexingExecutionCoordinator(/*MapperService mapperService, EngineConfig engineConfig*/) {
-        this.engine = new CompositeIndexingExecutionEngine(null, new Any(List.of(DataFormat.TEXT)));
+    public IndexingExecutionCoordinator(/*MapperService mapperService, EngineConfig engineConfig*/) throws IOException {
+        Any dataFormats = new Any(List.of(DataFormat.TEXT), DataFormat.TEXT);
+        this.engine = new CompositeIndexingExecutionEngine(null, dataFormats);
+
+        IndexWriterConfig iwc = new IndexWriterConfig();
+        iwc.setMergeScheduler(new OpensearchMultipleEngineMergeScheduler(null, dataFormats));
+
+        writer = new IndexWriter(null, iwc);
     }
 
     public CompositeDataFormatWriter.CompositeDocumentInput documentInput() throws IOException {
