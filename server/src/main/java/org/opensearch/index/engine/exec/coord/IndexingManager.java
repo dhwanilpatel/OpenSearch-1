@@ -22,6 +22,7 @@ import org.opensearch.index.engine.exec.commit.Committer;
 import org.opensearch.index.engine.exec.commit.LuceneCommitEngine;
 import org.opensearch.index.engine.exec.composite.CompositeDataFormatWriter;
 import org.opensearch.index.engine.exec.composite.CompositeIndexingExecutionEngine;
+import org.opensearch.index.engine.exec.merge.MergeScheduler;
 import org.opensearch.index.mapper.KeywordFieldMapper;
 import org.opensearch.index.mapper.MapperService;
 
@@ -31,12 +32,14 @@ public class IndexingManager {
     private final List<ReferenceManager.RefreshListener> refreshListeners = new ArrayList<>();
     private final Committer committer;
     private CatalogSnapshot catalogSnapshot;
+    private MergeScheduler mergeScheduler;
 
     public IndexingManager(Path indexPath, MapperService mapperService/*, EngineConfig engineConfig*/)
         throws IOException {
         this.engine = new CompositeIndexingExecutionEngine(mapperService, null, new Any(List.of(DataFormat.TEXT)), null,
             0);
         this.committer = new LuceneCommitEngine(indexPath);
+        mergeScheduler = new MergeScheduler(null, null, null);
     }
 
     public CompositeDataFormatWriter.CompositeDocumentInput documentInput() throws IOException {
