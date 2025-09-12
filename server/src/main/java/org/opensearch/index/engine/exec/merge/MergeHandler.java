@@ -50,17 +50,15 @@ public abstract class MergeHandler {
         // Merging for primary data format
         Merger primaryDataFormatMerger = mergers.get(dataFormats.getPrimaryDataFormat());
         List<FileMetadata> filesToMerge = getFilesToMerge(merge, dataFormats.getPrimaryDataFormat());
-        Tuple<Map<Tuple<String, String>, String>, FileMetadata> primaryMerge = primaryDataFormatMerger.merge(filesToMerge);
-        mergedFiles.put(dataFormats.getPrimaryDataFormat(), primaryMerge.v2());
-
-        Map<Tuple<String, String>, String> oldSegRowIdToNewRowId = primaryMerge.v1();
+        MergeResult primaryMergeResult = primaryDataFormatMerger.merge(filesToMerge);
+        mergedFiles.put(dataFormats.getPrimaryDataFormat(), primaryMergeResult.meegedFileMetadata);
 
         // Merging other format as per the old segment + row id -> new row id mapping.
         mergers.entrySet().stream()
             .filter(entry -> !entry.getKey().equals(dataFormats.getPrimaryDataFormat()))
             .forEach(entry -> {
                 List<FileMetadata> files = getFilesToMerge(merge, entry.getKey());
-                FileMetadata mergedFile = entry.getValue().merge(files, oldSegRowIdToNewRowId);
+                FileMetadata mergedFile = entry.getValue().merge(files, primaryMergeResult.rowIdMapping);
                 mergedFiles.put(entry.getKey(), mergedFile);
             });
     }

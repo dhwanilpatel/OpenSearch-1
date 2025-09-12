@@ -56,7 +56,7 @@ public class LuceneBasedMergeHandler extends MergeHandler implements Merger {
     }
 
     @Override
-    public Tuple<Map<Tuple<String, String>, String>, FileMetadata> merge(List<FileMetadata> fileMetadataList) {
+    public MergeResult merge(List<FileMetadata> fileMetadataList) {
         try {
             writer.merge(new MergePolicy.OneMerge(getSegmentInfos(fileMetadataList)));
         } catch (IOException e) {
@@ -66,7 +66,7 @@ public class LuceneBasedMergeHandler extends MergeHandler implements Merger {
     }
 
     @Override
-    public FileMetadata merge(List<FileMetadata> fileMetadataList, Map<Tuple<String, String>, String> rowIdMapping) {
+    public FileMetadata merge(List<FileMetadata> fileMetadataList, RowIdMapping rowIdMapping) {
         try {
             writer.merge(new MergePolicy.OneMerge(getSegmentInfos(fileMetadataList)));
         } catch (IOException e) {
@@ -85,6 +85,6 @@ public class LuceneBasedMergeHandler extends MergeHandler implements Merger {
             segmentNameList.add(fileMetadata.fileName());
         }
 
-        return SegmentInfos.readLatestCommit(writer.getDirectory()).asList().stream().filter(sci -> segmentNameList.contains(sci.info.name)).toList();;
+        return SegmentInfos.readLatestCommit(writer.getDirectory()).asList().stream().filter(sci -> segmentNameList.contains(sci.info.name)).toList();
     }
 }

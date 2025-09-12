@@ -19,6 +19,8 @@ import org.opensearch.index.engine.exec.RefreshResult;
 import org.opensearch.index.engine.exec.WriteResult;
 import org.opensearch.index.engine.exec.Writer;
 import org.opensearch.index.engine.exec.Merger;
+import org.opensearch.index.engine.exec.merge.MergeResult;
+import org.opensearch.index.engine.exec.merge.RowIdMapping;
 import org.opensearch.index.mapper.MappedFieldType;
 
 import java.io.File;
@@ -100,7 +102,7 @@ public class TextEngine implements IndexingExecutionEngine<TextDF> {
     public static class TextMerger implements Merger {
 
         @Override
-        public Tuple<Map<Tuple<String, String>, String>, FileMetadata> merge(List<FileMetadata> fileMetadataList) {
+        public MergeResult merge(List<FileMetadata> fileMetadataList) {
             // Here we will implementation of logic for merging files and reassign the row-ids
             // and creating the mapping of the old segment+id to new row id.
             //
@@ -109,7 +111,7 @@ public class TextEngine implements IndexingExecutionEngine<TextDF> {
         }
 
         @Override
-        public FileMetadata merge(List<FileMetadata> fileMetadataList, Map<Tuple<String, String>, String> rowIdMapping) {
+        public FileMetadata merge(List<FileMetadata> fileMetadataList, RowIdMapping rowIdMapping) {
             // Here we will have implementation of the merge logic where we will have the mapping of the old row id to new id
             // and merging the files.
             //
