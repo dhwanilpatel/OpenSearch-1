@@ -36,10 +36,11 @@ public class IndexingManager {
 
     public IndexingManager(Path indexPath, MapperService mapperService/*, EngineConfig engineConfig*/)
         throws IOException {
-        this.engine = new CompositeIndexingExecutionEngine(mapperService, null, new Any(List.of(DataFormat.TEXT)), null,
+        Any dataFormats = new Any(List.of(DataFormat.TEXT), DataFormat.TEXT);
+        this.engine = new CompositeIndexingExecutionEngine(mapperService, null, dataFormats, null,
             0);
         this.committer = new LuceneCommitEngine(indexPath);
-        mergeScheduler = new MergeScheduler(null, null, null);
+        mergeScheduler = new MergeScheduler(null,  dataFormats, null);
     }
 
     public CompositeDataFormatWriter.CompositeDocumentInput documentInput() throws IOException {
