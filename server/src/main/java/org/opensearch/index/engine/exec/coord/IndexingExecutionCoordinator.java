@@ -9,6 +9,8 @@
 package org.opensearch.index.engine.exec.coord;
 
 
+import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.NoMergeScheduler;
 import org.apache.lucene.search.ReferenceManager;
 import org.opensearch.index.engine.Engine;
 import org.opensearch.index.engine.EngineException;
@@ -17,6 +19,8 @@ import org.opensearch.index.engine.exec.RefreshInput;
 import org.opensearch.index.engine.exec.WriteResult;
 import org.opensearch.index.engine.exec.composite.CompositeDataFormatWriter;
 import org.opensearch.index.engine.exec.composite.CompositeIndexingExecutionEngine;
+import org.opensearch.index.engine.exec.merge.CustomIndexWriter;
+import org.opensearch.index.engine.exec.merge.MergeScheduler;
 import org.opensearch.index.mapper.KeywordFieldMapper;
 
 import java.io.IOException;
@@ -28,9 +32,19 @@ public class IndexingExecutionCoordinator {
     private final CompositeIndexingExecutionEngine engine;
     private List<ReferenceManager.RefreshListener> refreshListeners = new ArrayList<>();
     private CatalogSnapshot catalogSnapshot;
+    private CustomIndexWriter writer; // common writer for checkpoint handling.
+    private MergeScheduler mergeScheduler;
 
-    public IndexingExecutionCoordinator(/*MapperService mapperService, EngineConfig engineConfig*/) {
-        this.engine = new CompositeIndexingExecutionEngine(null, new Any(List.of(DataFormat.TEXT)));
+    public IndexingExecutionCoordinator(/*MapperService mapperService, EngineConfig engineConfig*/) throws IOException {
+        Any dataFormats = new Any(List.of(DataFormat.TEXT), DataFormat.TEXT);
+        this.engine = new CompositeIndexingExecutionEngine(null, dataFormats);
+        IndexWriterConfig iwc = new IndexWriterConfig();
+
+        iwc.setMergeScheduler(NoMergeScheduler.INSTANCE); // Setting no merge schduler to prevent lucene from merging segment on its own
+
+        writer = new CustomIndexWriter(null, iwc);
+        // TODO: pass correct services
+        mergeScheduler = new MergeScheduler(null, dataFormats, writer);
     }
 
     public CompositeDataFormatWriter.CompositeDocumentInput documentInput() throws IOException {
