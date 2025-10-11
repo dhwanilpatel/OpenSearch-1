@@ -82,7 +82,7 @@ public class LuceneBasedMergeHandler extends MergeHandler implements Merger {
 
         List<String> segmentNameList = new ArrayList<>();
         for(FileMetadata fileMetadata : fileMetadataList) {
-            segmentNameList.add(fileMetadata.fileName());
+            segmentNameList.add(fileMetadata.file());
         }
 
         return SegmentInfos.readLatestCommit(writer.getDirectory()).asList().stream().filter(sci -> segmentNameList.contains(sci.info.name)).toList();

@@ -9,17 +9,7 @@
 package org.opensearch.index.engine.exec.text;
 
 import org.opensearch.common.collect.Tuple;
-import org.opensearch.index.engine.exec.DataFormat;
-import org.opensearch.index.engine.exec.DocumentInput;
-import org.opensearch.index.engine.exec.FileInfos;
-import org.opensearch.index.engine.exec.WriterFileSet;
-import org.opensearch.index.engine.exec.FlushIn;
-import org.opensearch.index.engine.exec.IndexingExecutionEngine;
-import org.opensearch.index.engine.exec.RefreshInput;
-import org.opensearch.index.engine.exec.RefreshResult;
-import org.opensearch.index.engine.exec.WriteResult;
-import org.opensearch.index.engine.exec.Writer;
-import org.opensearch.index.engine.exec.Merger;
+import org.opensearch.index.engine.exec.*;
 import org.opensearch.index.engine.exec.merge.MergeResult;
 import org.opensearch.index.engine.exec.merge.RowIdMapping;
 import org.opensearch.index.mapper.MappedFieldType;

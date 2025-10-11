@@ -11,15 +11,7 @@ package org.opensearch.index.engine.exec.lucene;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.util.BytesRef;
 import org.opensearch.index.engine.InternalEngine;
-import org.opensearch.index.engine.exec.DataFormat;
-import org.opensearch.index.engine.exec.DocumentInput;
-import org.opensearch.index.engine.exec.FileInfos;
-import org.opensearch.index.engine.exec.FlushIn;
-import org.opensearch.index.engine.exec.IndexingExecutionEngine;
-import org.opensearch.index.engine.exec.RefreshInput;
-import org.opensearch.index.engine.exec.RefreshResult;
-import org.opensearch.index.engine.exec.WriteResult;
-import org.opensearch.index.engine.exec.Writer;
+import org.opensearch.index.engine.exec.*;
 import org.opensearch.index.mapper.KeywordFieldMapper;
 import org.opensearch.index.mapper.MappedFieldType;
 import org.opensearch.index.mapper.ParseContext;
@@ -44,6 +36,11 @@ public class LuceneIEEngine implements IndexingExecutionEngine<DataFormat.Lucene
     @Override
     public Writer<? extends DocumentInput<?>> createWriter(long writerGeneration) throws IOException {
         return new LuceneWriter(internalEngine.indexWriter, writerGeneration);
+    }
+
+    @Override
+    public Merger getMerger() {
+        return null;
     }
 
     @Override
