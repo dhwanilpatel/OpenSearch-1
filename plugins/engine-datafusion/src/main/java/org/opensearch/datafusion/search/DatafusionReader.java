@@ -50,7 +50,7 @@ public class DatafusionReader implements Closeable {
         String[] fileNames = new String[0];
         if(files != null) {
             System.out.println("Got the files!!!!!");
-            fileNames = files.stream().map(file -> Path.of(file.fileName()).getFileName().toString()).toArray(String[]::new);
+            fileNames = files.stream().map(file -> Path.of(file.file()).getFileName().toString()).toArray(String[]::new);
         }
         //String[] fileNames = files.stream().map(file -> Path.of(file.fileName()).getFileName().toString()).toArray(String[]::new);
         System.out.println("File names: " + Arrays.toString(fileNames));

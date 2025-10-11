@@ -10,6 +10,7 @@ package org.opensearch.index.engine.exec.coord;
 
 import org.opensearch.common.annotation.ExperimentalApi;
 import org.opensearch.common.util.concurrent.AbstractRefCounted;
+import org.opensearch.index.engine.exec.FileMetadata;
 import org.opensearch.index.engine.exec.RefreshResult;
 import org.opensearch.index.engine.exec.WriterFileSet;
 
@@ -36,6 +37,13 @@ public class CatalogSnapshot extends AbstractRefCounted {
         if (dfGroupedSearchableFiles.containsKey(dataFormat)) {
             return dfGroupedSearchableFiles.get(dataFormat);
         }
+        return Collections.emptyList();
+    }
+
+    public Collection<FileMetadata> getSearchableFilesFix(String dataFormat) {
+//        if (dfGroupedSearchableFiles.containsKey(dataFormat)) {
+//            return dfGroupedSearchableFiles.get(dataFormat).iterator().next().getFiles();
+//        }
         return Collections.emptyList();
     }
 

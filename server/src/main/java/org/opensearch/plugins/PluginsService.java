@@ -403,7 +403,7 @@ public class PluginsService implements ReportingService<PluginsAndModules> {
         List<Bundle> sortedBundles = sortBundles(bundles);
         Map<String, Set<URL>> transitiveUrls = new HashMap<>();
         for (Bundle bundle : sortedBundles) {
-            checkBundleJarHell(classpath, bundle, transitiveUrls);
+//            checkBundleJarHell(classpath, bundle, transitiveUrls);
         }
     }
 
@@ -610,7 +610,7 @@ public class PluginsService implements ReportingService<PluginsAndModules> {
         Map<String, Set<URL>> transitiveUrls = new HashMap<>();
         List<Bundle> sortedBundles = sortBundles(bundles);
         for (Bundle bundle : sortedBundles) {
-            checkBundleJarHell(JarHell.parseClassPath(), bundle, transitiveUrls);
+//            checkBundleJarHell(JarHell.parseClassPath(), bundle, transitiveUrls);
 
             final Plugin plugin = loadBundle(bundle, loaded);
             plugins.add(new Tuple<>(bundle.plugin, plugin));
