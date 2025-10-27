@@ -15,10 +15,7 @@ import org.opensearch.index.engine.exec.RefreshResult;
 import org.opensearch.index.engine.exec.WriterFileSet;
 
 import java.io.Serializable;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 @ExperimentalApi
 public class CatalogSnapshot extends AbstractRefCounted {
@@ -85,6 +82,15 @@ public class CatalogSnapshot extends AbstractRefCounted {
 
         public void addSearchableFiles(String dataFormat, WriterFileSet writerFileSetGroup) {
             dfGroupedSearchableFiles.put(dataFormat, writerFileSetGroup);
+        }
+
+        public Collection<FileMetadata> getSearchableFiles(String df) {
+            List<FileMetadata> searchableFiles = new ArrayList<>();
+            String directory = dfGroupedSearchableFiles.get(df).getDirectory();
+            for(String file : dfGroupedSearchableFiles.get(df).getFiles()) {
+                searchableFiles.add(new FileMetadata(directory, file));
+            }
+            return searchableFiles;
         }
 
         public long getGeneration() {

@@ -165,6 +165,7 @@ import org.opensearch.index.autoforcemerge.AutoForceMergeMetrics;
 import org.opensearch.index.compositeindex.CompositeIndexSettings;
 import org.opensearch.index.engine.EngineFactory;
 import org.opensearch.index.engine.MergedSegmentWarmerFactory;
+import org.opensearch.index.engine.exec.merge.ParquetTieredMergePolicy;
 import org.opensearch.index.mapper.MappingTransformerRegistry;
 import org.opensearch.index.recovery.RemoteStoreRestoreService;
 import org.opensearch.index.remote.RemoteIndexPathUploader;
@@ -2006,6 +2007,10 @@ public class Node implements Closeable {
         logger.info("started");
 
         pluginsService.filterPlugins(ClusterPlugin.class).forEach(plugin -> plugin.onNodeStarted(clusterService.localNode()));
+
+
+//        ParquetTieredMergePolicy.main();
+
 
         return this;
     }

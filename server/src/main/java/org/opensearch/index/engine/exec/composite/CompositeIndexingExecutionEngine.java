@@ -36,7 +36,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 public class CompositeIndexingExecutionEngine implements IndexingExecutionEngine<Any> {
 
     private final CompositeDataFormatWriterPool dataFormatWriterPool;
-    private DataFormat dataFormat;
+    private Any dataFormat;
     private final AtomicLong writerGeneration;
     private final List<IndexingExecutionEngine<?>> delegates = new ArrayList<>();
 
@@ -57,17 +57,20 @@ public class CompositeIndexingExecutionEngine implements IndexingExecutionEngine
 
     public CompositeIndexingExecutionEngine(MapperService mapperService, PluginsService pluginsService, ShardPath shardPath, long initialWriterGeneration) {
         this.writerGeneration = new AtomicLong(initialWriterGeneration);
+        List<DataFormat> dataFormats = new ArrayList<>();
         try {
             DataSourcePlugin plugin = pluginsService.filterPlugins(DataSourcePlugin.class).stream().findAny().orElseThrow(() -> new IllegalArgumentException("dataformat [" + DataFormat.TEXT + "] is not registered."));
+            dataFormats.add(plugin.getDataFormat());
             delegates.add(plugin.indexingEngine(mapperService, shardPath));
         } catch (NullPointerException e) {
             delegates.add(new TextEngine());
         }
+        this.dataFormat = new Any(dataFormats, dataFormats.get(0));
         this.dataFormatWriterPool = new CompositeDataFormatWriterPool(() -> new CompositeDataFormatWriter(this, writerGeneration.getAndIncrement()), ConcurrentLinkedQueue::new, Runtime.getRuntime().availableProcessors());
     }
 
     @Override
-    public DataFormat getDataFormat() {
+    public Any getDataFormat() {
         return dataFormat;
     }
 
@@ -108,19 +111,29 @@ public class CompositeIndexingExecutionEngine implements IndexingExecutionEngine
             }
 
             // make indexing engines aware of everything
-            for (IndexingExecutionEngine<?> delegate : delegates) {
-                RefreshInput refreshInput = refreshInputs.get(delegate.getDataFormat());
-                if (refreshInput != null) {
-                    RefreshResult result = delegate.refresh(refreshInput);
-                    finalResult.add(delegate.getDataFormat(), result.getRefreshedFiles(delegate.getDataFormat()));
-                }
-            }
+            finalResult = refresh(refreshInputs);
 
             // provide a view to the upper layer
             return finalResult;
         } catch (IOException ex) {
             throw new RuntimeException(ex);
         }
+    }
+
+    public RefreshResult refresh(Map<DataFormat, RefreshInput> refreshInputs) throws IOException {
+        System.out.println("In refresh from merge ============ " + refreshInputs);
+        RefreshResult finalResult = new RefreshResult();
+
+        // make indexing engines aware of everything
+        for (IndexingExecutionEngine<?> delegate : delegates) {
+            RefreshInput refreshInput = refreshInputs.get(delegate.getDataFormat());
+            if (refreshInput != null) {
+                RefreshResult result = delegate.refresh(refreshInput);
+                System.out.println("RefreshInput ===" + refreshInput.getWriterFiles() + " RefreshResult ======= " + result.getRefreshedFiles());
+                finalResult.add(delegate.getDataFormat(), result.getRefreshedFiles(delegate.getDataFormat()));
+            }
+        }
+        return finalResult;
     }
 
     public List<IndexingExecutionEngine<?>> getDelegates() {

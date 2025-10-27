@@ -8,9 +8,31 @@
 
 package org.opensearch.index.engine.exec.merge;
 
+import org.opensearch.index.engine.exec.DataFormat;
 import org.opensearch.index.engine.exec.FileMetadata;
 
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
+
 public class MergeResult {
-    public RowIdMapping rowIdMapping;
-    public FileMetadata meegedFileMetadata;
+
+    private RowIdMapping rowIdMapping;
+
+    private Map<DataFormat, Collection<FileMetadata>> mergedFileMetadata = new HashMap<>();
+
+//    private Collection<FileMetadata> mergedFileMetadata;
+
+    public MergeResult(RowIdMapping rowIdMapping, Map<DataFormat, Collection<FileMetadata>> mergedFileMetadata) {
+        this.rowIdMapping = rowIdMapping;
+        this.mergedFileMetadata = mergedFileMetadata;
+    }
+
+    public RowIdMapping getRowIdMapping() {
+        return rowIdMapping;
+    }
+
+    public Map<DataFormat, Collection<FileMetadata>> getMergedFileMetadata() {
+        return mergedFileMetadata;
+    }
 }

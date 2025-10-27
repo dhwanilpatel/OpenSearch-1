@@ -40,6 +40,7 @@ public class LuceneCommitEngine implements Committer {
     @Override
     public void addLuceneIndexes(CatalogSnapshot catalogSnapshot) {
         Collection<WriterFileSet> luceneFileCollection = catalogSnapshot.getSearchableFiles(DataFormat.LUCENE.name());
+        System.out.println("in add lucene index ======= Lucene's file =========== " + luceneFileCollection);
         luceneFileCollection.forEach(writerFileSet -> {
             try {
                 indexWriter.addIndexes(new NIOFSDirectory(Path.of(writerFileSet.getDirectory())));
@@ -51,6 +52,10 @@ public class LuceneCommitEngine implements Committer {
         catalogSnapshot.getSegments().forEach(segment -> userData.put(String.valueOf(segment.getGeneration()),
             new String(SerializationUtils.serialize(segment))));
         indexWriter.setLiveCommitData(userData.entrySet());
+    }
+
+    public IndexWriter getIndexWriter() {
+        return indexWriter;
     }
 
     @Override

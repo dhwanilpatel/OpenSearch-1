@@ -15,8 +15,16 @@ public class RefreshInput {
 
     private final List<WriterFileSet> writerFiles;
 
+    private String source;
+
     public RefreshInput() {
         this.writerFiles = new ArrayList<>();
+        this.source = "refresh";
+    }
+
+    public RefreshInput(String source) {
+        this.writerFiles = new ArrayList<>();
+        this.source = source;
     }
 
     public void add(WriterFileSet writerFileSetGroup) {
@@ -25,5 +33,9 @@ public class RefreshInput {
 
     public List<WriterFileSet> getWriterFiles() {
         return writerFiles;
+    }
+
+    public String getSource() {
+        return source;
     }
 }

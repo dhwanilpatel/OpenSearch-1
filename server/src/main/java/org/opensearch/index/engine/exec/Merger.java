@@ -8,12 +8,10 @@
 
 package org.opensearch.index.engine.exec;
 
-import org.opensearch.common.collect.Tuple;
 import org.opensearch.index.engine.exec.merge.MergeResult;
 import org.opensearch.index.engine.exec.merge.RowIdMapping;
 
-import java.util.List;
-import java.util.Map;
+import java.util.Collection;
 
 public interface Merger {
     /**
@@ -23,7 +21,7 @@ public interface Merger {
      *     First item -> Mapping of old segment + old rowId to new rowId
      *     Second item -> Merged FileMetadata
      */
-    MergeResult merge(List<FileMetadata> fileMetadataList /*, MapperService or any other needed service*/);
+    MergeResult merge(Collection<FileMetadata> fileMetadataList);
 
     /**
      *
@@ -31,5 +29,5 @@ public interface Merger {
      * @param rowIdMapping Mapping of old segment + old rowId to new rowId
      * @return FileMetadata Merged FileMetadata
      */
-    FileMetadata merge(List<FileMetadata> fileMetadataList, RowIdMapping rowIdMapping /*, MapperService or any other needed service*/);
+    MergeResult merge(Collection<FileMetadata> fileMetadataList, RowIdMapping rowIdMapping);
 }

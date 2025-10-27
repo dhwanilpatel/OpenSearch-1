@@ -610,6 +610,10 @@ public class PluginsService implements ReportingService<PluginsAndModules> {
         Map<String, Set<URL>> transitiveUrls = new HashMap<>();
         List<Bundle> sortedBundles = sortBundles(bundles);
         for (Bundle bundle : sortedBundles) {
+            System.out.println("Bundle ==== " + bundle + " " + bundle.plugin.getName());
+            if(bundle.plugin.getName().equals("ingest-geoip") || bundle.plugin.getName().equals("ingest-user-agent")) {
+                continue;
+            }
 //            checkBundleJarHell(JarHell.parseClassPath(), bundle, transitiveUrls);
 
             final Plugin plugin = loadBundle(bundle, loaded);

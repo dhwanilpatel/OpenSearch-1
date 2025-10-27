@@ -11,13 +11,14 @@ package org.opensearch.index.engine.exec.merge;
 import org.opensearch.index.engine.exec.DataFormat;
 import org.opensearch.index.engine.exec.FileMetadata;
 
+import java.util.Collection;
 import java.util.List;
 
 public class Merge {
     private final DataFormat dataFormat;
-    private final List<FileMetadata> filesToMerge; // Files to merge as per given data format
+    private final Collection<FileMetadata> filesToMerge; // Files to merge as per given data format
 
-    public Merge(DataFormat dataFormat, List<FileMetadata> filesToMerge) {
+    public Merge(DataFormat dataFormat, Collection<FileMetadata> filesToMerge) {
         this.dataFormat = dataFormat;
         this.filesToMerge = filesToMerge;
     }
@@ -26,7 +27,11 @@ public class Merge {
         return dataFormat;
     }
 
-    public List<FileMetadata> getFilesToMerge() {
+    public Collection<FileMetadata> getFilesToMerge() {
         return filesToMerge;
+    }
+
+    public String toString() {
+        return "Merge [dataFormat=" + dataFormat + ", filesToMerge=" + filesToMerge + "] ";
     }
 }

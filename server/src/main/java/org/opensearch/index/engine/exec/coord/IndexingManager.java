@@ -22,6 +22,7 @@ import org.opensearch.index.engine.exec.commit.Committer;
 import org.opensearch.index.engine.exec.commit.LuceneCommitEngine;
 import org.opensearch.index.engine.exec.composite.CompositeDataFormatWriter;
 import org.opensearch.index.engine.exec.composite.CompositeIndexingExecutionEngine;
+import org.opensearch.index.engine.exec.merge.MergeResult;
 import org.opensearch.index.engine.exec.merge.MergeScheduler;
 import org.opensearch.index.mapper.KeywordFieldMapper;
 import org.opensearch.index.mapper.MapperService;
@@ -40,7 +41,6 @@ public class IndexingManager {
         this.engine = new CompositeIndexingExecutionEngine(mapperService, null, dataFormats, null,
             0);
         this.committer = new LuceneCommitEngine(indexPath);
-        mergeScheduler = new MergeScheduler(null,  dataFormats, null);
     }
 
     public CompositeDataFormatWriter.CompositeDocumentInput documentInput() throws IOException {
@@ -55,6 +55,7 @@ public class IndexingManager {
     }
 
     public synchronized void refresh(String source) throws EngineException, IOException {
+        System.out.println("in refresh ============= Indexing Manager ======= ");
         refreshListeners.forEach(ref -> {
             try {
                 ref.beforeRefresh();
@@ -81,6 +82,13 @@ public class IndexingManager {
                 throw new RuntimeException(e);
             }
         });
+        try {
+            triggerPossibleMerges();
+        } catch (Exception e) {
+            System.out.println("ERROR in MERGE =================" +
+                "");
+            e.printStackTrace();
+        }
     }
 
     // This should get wired into searcher acquireSnapshot for initializing reader context later
@@ -94,6 +102,20 @@ public class IndexingManager {
                 catalogSnapshot.decRef(); // this should be package-private
             }
         };
+    }
+
+    public void applyMergeChanges(MergeResult mergeResult) {
+        // TODO
+        // either call refresh or directly update the catalog snapshot with updated merge
+    }
+
+    public void triggerPossibleMerges() {
+        System.out.println("in triggerPossibleMerges ========== ");
+        try {
+            mergeScheduler.triggerMerges();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public static abstract class ReleasableRef<T> implements AutoCloseable {

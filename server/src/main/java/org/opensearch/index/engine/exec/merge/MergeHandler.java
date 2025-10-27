@@ -8,64 +8,83 @@
 
 package org.opensearch.index.engine.exec.merge;
 
-import org.opensearch.common.collect.Tuple;
-import org.opensearch.index.engine.DataFormatPlugin;
 import org.opensearch.index.engine.exec.DataFormat;
 import org.opensearch.index.engine.exec.FileMetadata;
 import org.opensearch.index.engine.exec.Merger;
+import org.opensearch.index.engine.exec.composite.CompositeIndexingExecutionEngine;
 import org.opensearch.index.engine.exec.coord.Any;
-import org.opensearch.plugins.PluginsService;
+import org.opensearch.index.engine.exec.coord.CatalogSnapshot;
+import org.opensearch.index.engine.exec.coord.CompositeEngine;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public abstract class MergeHandler {
 
-    private final Any dataFormats;
-    private final PluginsService pluginsService;
+    private final Any compositeDataFormat;
 
-    public abstract List<Merge> findMerges() throws IOException;
+    private final CompositeIndexingExecutionEngine compositeIndexingExecutionEngine;
 
-    public MergeHandler(PluginsService pluginsService, Any dataFormats) {
-        this.dataFormats = dataFormats;
-        this.pluginsService = pluginsService;
+    private CompositeEngine compositeEngine;
+    private Map<DataFormat, Merger> dataFormatMergerMap;
+
+    public MergeHandler(CompositeEngine compositeEngine, CompositeIndexingExecutionEngine compositeIndexingExecutionEngine, Any dataFormats) {
+        this.compositeDataFormat = dataFormats;
+        this.compositeIndexingExecutionEngine = compositeIndexingExecutionEngine;
+        this.compositeEngine = compositeEngine;
+        dataFormatMergerMap = new HashMap<>();
+
+        compositeIndexingExecutionEngine.getDelegates().forEach(engine -> {
+            try {
+                dataFormatMergerMap.put(engine.getDataFormat(), engine.getMerger());
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        });
     }
 
-    public void doMerge(Merge merge) throws IOException {
-        Map<DataFormat, Merger> mergers = new HashMap<>();
-        Map<DataFormat, FileMetadata> mergedFiles = new HashMap<>();
+    public abstract Collection<Merge> findMerges() throws IOException;
 
-        for (DataFormat dataFormat : dataFormats.getDataFormats()) {
-            DataFormatPlugin plugin = pluginsService.filterPlugins(DataFormatPlugin.class).stream()
-                .filter(curr -> curr.getDataFormat().equals(dataFormat))
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("dataformat [" + dataFormat + "] is not registered."));
+    public MergeResult doMerge(Merge merge) {
 
-            mergers.put(plugin.getDataFormat(), plugin.indexingEngine().getMerger());
+        Map<DataFormat, Collection<FileMetadata>> mergedFiles = new HashMap<>();
+        try(CompositeEngine.ReleasableRef<CatalogSnapshot> catalogSnapshot = compositeEngine.acquireSnapshot()) {
+
+            Collection<FileMetadata> filesToMerge = getFilesToMerge(merge, compositeDataFormat.getPrimaryDataFormat(), catalogSnapshot.getRef());
+
+            // Merging primary data format
+            MergeResult primaryMergeResult = dataFormatMergerMap.get(compositeDataFormat.getPrimaryDataFormat()).merge(filesToMerge);
+            mergedFiles.put(compositeDataFormat.getPrimaryDataFormat(), primaryMergeResult.getMergedFileMetadata().get(compositeDataFormat.getPrimaryDataFormat()));
+
+            // Merging other format as per the old segment + row id -> new row id mapping.
+
+            compositeIndexingExecutionEngine.getDelegates().stream()
+                    .filter(engine -> !engine.getDataFormat().equals(compositeDataFormat.getPrimaryDataFormat()))
+                    .forEach(indexingExecutionEngine -> {
+                        DataFormat dataFormat = indexingExecutionEngine.getDataFormat();
+                        Collection<FileMetadata> files = getFilesToMerge(merge, dataFormat, catalogSnapshot.getRef());
+                        MergeResult secondaryMergeResult = dataFormatMergerMap.get(dataFormat).merge(files, primaryMergeResult.getRowIdMapping());
+                        mergedFiles.put(dataFormat, secondaryMergeResult.getMergedFileMetadata().get(dataFormat));
+                    });
+            return new MergeResult(primaryMergeResult.getRowIdMapping(), mergedFiles);
+
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public Collection<FileMetadata> getFilesToMerge(Merge merge, DataFormat dataFormat, CatalogSnapshot catalogSnapshot) {
+        if(merge.getDataFormat().name().equalsIgnoreCase(dataFormat.name())) {
+            return merge.getFilesToMerge();
         }
 
-        // Merging for primary data format
-        Merger primaryDataFormatMerger = mergers.get(dataFormats.getPrimaryDataFormat());
-        List<FileMetadata> filesToMerge = getFilesToMerge(merge, dataFormats.getPrimaryDataFormat());
-        MergeResult primaryMergeResult = primaryDataFormatMerger.merge(filesToMerge);
-        mergedFiles.put(dataFormats.getPrimaryDataFormat(), primaryMergeResult.meegedFileMetadata);
+        // TODO get file mapping for other data format from catalog snapshot
+        for(CatalogSnapshot.Segment segment : catalogSnapshot.getSegments()) {
+            if(segment.getSearchableFiles(merge.getDataFormat().name()).equals(merge.getFilesToMerge())) {
+                return segment.getSearchableFiles(dataFormat.name());
+            }
+        }
 
-        // Merging other format as per the old segment + row id -> new row id mapping.
-        mergers.entrySet().stream()
-            .filter(entry -> !entry.getKey().equals(dataFormats.getPrimaryDataFormat()))
-            .forEach(entry -> {
-                List<FileMetadata> files = getFilesToMerge(merge, entry.getKey());
-                FileMetadata mergedFile = entry.getValue().merge(files, primaryMergeResult.rowIdMapping);
-                mergedFiles.put(entry.getKey(), mergedFile);
-            });
-    }
-
-    public List<FileMetadata> getFilesToMerge(Merge merge, DataFormat dataFormat) {
-        List<FileMetadata> files = new ArrayList<>();
-        // Check file names of merges for other data format and find correct file names and return
-        return files;
+        throw new RuntimeException("Couldn't find the file to merge for data format [" + dataFormat + "]");
     }
 }
