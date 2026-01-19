@@ -39,7 +39,7 @@ vectorized-exec-spi = { path = "../../../../../libs/vectorized-exec-spi/rust" }
 
 # Parquet support
 parquet = "53.0.0"
-polars = { version = "0.51.0", features = ["lazy", "parquet", "dtype-datetime"] }
+polars = { version = "0.51.0", features = ["lazy", "parquet", "dtype-datetime", "merge_sorted"] }
 
 # Object store for file access
 object_store = "0.11"

@@ -4,6 +4,9 @@ use jni::sys::jint;
 use std::error::Error;
 use std::path::Path;
 use polars::prelude::*;
+use polars::lazy::dsl::col;
+use polars::prelude::Expr::Selector;
+use polars::prelude::Selector::ByName;
 
 const ROW_ID_COLUMN_NAME: &str = "___row_id";
 const SORT_COLUMN_NAME: &str = "EventDate";
@@ -63,43 +66,57 @@ fn merge_parquet_files_sorted(input_files: &[String], output_path: &str) -> Pola
         return Err(PolarsError::InvalidOperation("No input files".into()));
     }
 
-    // Simplified approach: collect and write
-    let mut lazy_frames = Vec::new();
+    println!("Starting merge_sorted approach with {} files", input_files.len());
 
-    for file_path in input_files {
-        let lf = LazyFrame::scan_parquet(
-            PlPath::Local(Arc::from(Path::new(file_path))),
-            ScanArgsParquet {
-                use_statistics: false,
-                ..Default::default()
-            }
-        )?;
-        // .with_row_index("tmpRowIndex", None);
-        lazy_frames.push(lf);
+    // Check if output directory exists
+    if let Some(parent) = std::path::Path::new(output_path).parent() {
+        if !parent.exists() {
+            std::fs::create_dir_all(parent)
+                .map_err(|e| PolarsError::InvalidOperation(format!("Failed to create directory: {}", e).into()))?;
+        }
     }
 
-    let mut merged_df = concat(lazy_frames, UnionArgs::default())?
-        .sort([SORT_COLUMN_NAME], SortMultipleOptions::default())
-        .collect()?;
+    // Start with first file
+    let mut result_lf = LazyFrame::scan_parquet(
+        PlPath::Local(Arc::from(Path::new(&input_files[0]))),
+        ScanArgsParquet::default()
+    )?
+    .drop(ByName {names: Arc::new([PlSmallStr::from_str(ROW_ID_COLUMN_NAME)]), strict: true});// Drop existing row_id
 
-    // Update ___row_id column with sequential values
-    let num_rows = merged_df.height();
-    let new_row_ids = Series::new(ROW_ID_COLUMN_NAME.into(), (0..num_rows as i64).collect::<Vec<i64>>());
-    merged_df.replace(ROW_ID_COLUMN_NAME, new_row_ids)?;
 
-    // Write using simple file creation
-    let mut file = std::fs::File::create(output_path)
-        .map_err(|e| PolarsError::InvalidOperation(format!("Failed to create file: {}", e).into()))?;
+    // Merge remaining files using merge_sorted
+    for file_path in &input_files[1..] {
+        println!("Merging file: {}", file_path);
+        let other_lf = LazyFrame::scan_parquet(
+            PlPath::Local(Arc::from(Path::new(file_path))),
+            ScanArgsParquet::default()
+        )?
+        .drop(ByName {names: Arc::new([PlSmallStr::from_str(ROW_ID_COLUMN_NAME)]), strict: true});// Drop existing row_id
 
-    ParquetWriter::new(&mut file)
-//     .with_statistics(StatisticsOptions::default().with_stats(false))
-    .finish(&mut merged_df.clone())?;
+        result_lf = result_lf.merge_sorted(other_lf, SORT_COLUMN_NAME)?;
+    }
 
-//     // Replace the file creation and ParquetWriter with:
-//     let write_options = ParquetWriteOptions::default()
-//         .with_statistics(StatisticsOptions::default().with_stats(false));
-//
-//     merged_df.write_parquet(output_path, write_options)?;
+    // Add row index and write using streaming
+    println!("Writing merged result to: {}", output_path);
+
+    let res = result_lf
+        .with_row_index(ROW_ID_COLUMN_NAME, None)  // Add sequential 0-n row_id
+        .sink_parquet(
+            SinkTarget::Path(PlPath::Local(Arc::from(Path::new(output_path)))),
+            ParquetWriteOptions::default(),
+            None,
+            SinkOptions::default()
+        )?;
+
+    let finalRes = res.collect_with_engine(Engine::Streaming);
+    //
+    // println!("final count === {}", finalRes?.height());
+
+    // if std::path::Path::new(output_path).exists() {
+    //     println!("Merge completed successfully");
+    // } else {
+    //     println!("WARNING: Operation completed but file not found");
+    // }
 
     Ok(())
 }
