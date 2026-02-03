@@ -34,16 +34,26 @@ package org.opensearch.index.shard;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.FilterMergePolicy;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.SegmentCommitInfo;
 import org.apache.lucene.index.SegmentInfos;
+import org.apache.lucene.index.Sorter;
+import org.apache.lucene.store.Directory;
+import org.apache.lucene.util.IOFunction;
 import org.opensearch.Version;
+import org.opensearch.index.engine.exec.merge.OneMerge;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.Executor;
 
 /**
  * A {@link MergePolicy} that upgrades segments and can upgrade merges.
@@ -145,7 +155,17 @@ public final class OpenSearchMergePolicy extends FilterMergePolicy {
             // has a chance to decide what to do (e.g. collapse the segments to satisfy maxSegmentCount)
         }
 
-        return super.findForcedMerges(segmentInfos, maxSegmentCount, segmentsToMerge, mergeContext);
+        MergeSpecification mergeSpecification = super.findForcedMerges(segmentInfos, maxSegmentCount, segmentsToMerge, mergeContext);
+        if(mergeSpecification == null) {
+            return null;
+        }
+        System.out.println("Found normal merges ======= " + mergeSpecification);
+        MergeSpecification mergeSpecification1 = new MergeSpecification();
+        for(OneMerge oneMerge : mergeSpecification.merges) {
+            mergeSpecification1.add(new OneMergeWrapper(oneMerge));
+        }
+        System.out.println("Updated merges ======= " + mergeSpecification1);
+        return mergeSpecification1;
     }
 
     /**
@@ -157,5 +177,92 @@ public final class OpenSearchMergePolicy extends FilterMergePolicy {
     public void setUpgradeInProgress(boolean upgrade, boolean onlyAncientSegments) {
         this.upgradeInProgress = upgrade;
         this.upgradeOnlyAncientSegments = onlyAncientSegments;
+    }
+}
+
+class OneMergeWrapper extends MergePolicy.OneMerge {
+    private MergePolicy.OneMerge oneMerge;
+    private List<CodecReader> codecReaders;
+
+    public OneMergeWrapper(MergePolicy.OneMerge oneMerge) {
+        super(oneMerge);
+        this.oneMerge = oneMerge;
+        codecReaders = new ArrayList<>();
+    }
+
+    @Override
+    public CodecReader wrapForMerge(CodecReader reader) throws IOException {
+        codecReaders.add(reader);
+        return reader;
+    }
+
+    @Override
+    public Sorter.DocMap reorder(CodecReader reader, Directory dir, Executor executor)
+        throws IOException {
+        System.out.println("In Reorder of OneMerge wrapper");
+
+        final int maxDoc = reader.maxDoc();
+
+        final int[] oldToNew = new int[maxDoc];
+        final int[] newToOld = new int[maxDoc];
+
+        int docBase = 0;
+        int i = 0;
+        for(CodecReader codecReader : codecReaders) {
+            for(int doc = 0 ; doc < codecReader.numDocs() ; doc++) {
+                oldToNew[docBase+doc] = getNewDocId(codecReader, i, doc);
+                newToOld[getNewDocId(codecReader, i, doc)] = docBase+doc;
+            }
+            docBase += codecReader.maxDoc();
+            i++;
+        }
+
+        System.out.println("oldToNew ==== " + Arrays.toString(oldToNew));
+        System.out.println("newToOld ==== " + Arrays.toString(newToOld));
+
+        return new Sorter.DocMap() {
+            @Override
+            public int oldToNew(int docID) {
+                return docID >= 0 && docID < maxDoc ? oldToNew[docID] : docID;
+            }
+
+            @Override
+            public int newToOld(int docID) {
+                return docID >= 0 && docID < maxDoc ? newToOld[docID] : docID;
+            }
+
+            @Override
+            public int size() {
+                return maxDoc;
+            }
+        };
+    }
+
+    public int getNewDocId(CodecReader codecReader, int i, int oldId) {
+        System.out.println("On Get New Doc Id");
+        if(i == 0) {
+            switch (oldId) {
+                case 0:
+                    return 0;
+                case 1:
+                    return 2;
+                case 2:
+                    return 3;
+                default:
+                    return oldId;
+            }
+        } else if(i == 1) {
+            switch (oldId) {
+                case 0:
+                    return 1;
+                case 1:
+                    return 4;
+                case 2:
+                    return 5;
+                default:
+                    return oldId;
+            }
+        }
+        return oldId;
     }
 }

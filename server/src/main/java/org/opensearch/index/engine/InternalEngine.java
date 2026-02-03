@@ -33,6 +33,8 @@
 package org.opensearch.index.engine;
 
 import org.apache.logging.log4j.Logger;
+import org.apache.lucene.codecs.Codec;
+//import org.apache.lucene.codecs.simpletext.SimpleTextCodec;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.index.DirectoryReader;
@@ -308,6 +310,7 @@ public class InternalEngine extends Engine {
                     translogManager::getLastSyncedGlobalCheckpoint
                 );
                 this.localCheckpointTracker = createLocalCheckpointTracker(localCheckpointTrackerSupplier);
+
                 writer = createWriter();
                 bootstrapAppendOnlyInfoFromWriter(writer);
                 // Interim solution: Skipping loading historyUUID and forceMergeUUID until IndexShard integration of CompositeEngine is completed.
@@ -1906,6 +1909,17 @@ public class InternalEngine extends Engine {
             throw ex;
         }
     }
+
+
+//    private IndexWriter createWriter() throws IOException {
+//        try {
+//            final IndexWriterConfig iwc = getIndexWriterConfig();
+//            return createWriter(store.directory(), iwc);
+//        } catch (LockObtainFailedException ex) {
+//            logger.warn("could not lock IndexWriter", ex);
+//            throw ex;
+//        }
+//    }
 
     // pkg-private for testing
     IndexWriter createWriter(Directory directory, IndexWriterConfig iwc) throws IOException {
